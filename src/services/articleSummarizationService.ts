@@ -24,9 +24,12 @@ export class ArticleSummarizationService {
   private readonly client: OpenAI;
   private readonly model: string;
 
-  constructor(options?: { apiKey?: string; model?: string }) {
-    this.client = new OpenAI({ apiKey: options?.apiKey ?? process.env.OPENAI_API_KEY });
-    this.model = options?.model ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  constructor(options?: { apiKey?: string; model?: string; baseURL?: string }) {
+    const apiKey = options?.apiKey ?? process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY;
+    const baseURL = options?.baseURL ?? process.env.AI_API_BASE_URL ?? "https://api.openai.com/v1";
+
+    this.client = new OpenAI({ apiKey, baseURL });
+    this.model = options?.model ?? process.env.AI_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
   }
 
   get modelName(): string {
@@ -34,9 +37,9 @@ export class ArticleSummarizationService {
   }
 
   async summarize(input: SummarizeArticleInput): Promise<ArticleSummaryResult> {
-    const response = await this.client.responses.create({
+    const response = await this.client.chat.completions.create({
       model: this.model,
-      input: [
+      messages: [
         {
           role: "system",
           content:
@@ -64,42 +67,15 @@ export class ArticleSummarizationService {
           }),
         },
       ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "article_summary",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: [
-              "summary",
-              "keyTakeaways",
-              "categories",
-              "tags",
-              "seoTitle",
-              "seoDescription",
-              "confidenceScore",
-            ],
-            properties: {
-              summary: { type: "string" },
-              keyTakeaways: { type: "array", items: { type: "string" } },
-              categories: { type: "array", items: { type: "string" } },
-              tags: { type: "array", items: { type: "string" } },
-              seoTitle: { type: "string" },
-              seoDescription: { type: "string" },
-              confidenceScore: { type: "number", minimum: 0, maximum: 1 },
-            },
-          },
-        },
-      },
+      response_format: { type: "json_object" },
+      temperature: 0.3,
     });
 
-    const outputText = response.output_text;
-    if (!outputText) {
-      throw new Error("OpenAI response did not include summary output text.");
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("AI response did not include summary content.");
     }
 
-    return summarizationSchema.parse(JSON.parse(outputText));
+    return summarizationSchema.parse(JSON.parse(content));
   }
 }

@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SourceType {
+  RSS
+  NEWS_WEBSITE
+  BLOG
+  RESEARCH_WEBSITE
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+enum IngestionFailureStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+enum UserRole {
+  USER
+  EDITOR
+  ADMIN
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  clerkUserId String   @unique @map("clerk_user_id")
+  email       String   @unique
+  name        String?
+  role        UserRole @default(USER)
+  organization String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([role])
+  @@map("users")
+}
+
+model Source {
+  id              String             @id @default(uuid()) @db.Uuid
+  name            String
+  sourceType      SourceType         @default(RSS)
+  websiteUrl      String?            @map("website_url")
+  rssUrl          String?            @map("rss_url")
+  domain          String?
+  reputationScore Decimal            @default(0) @map("reputation_score") @db.Decimal(4, 2)
+  isActive        Boolean            @default(true) @map("is_active")
+  lastFetchedAt   DateTime?          @map("last_fetched_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  articles          Article[]
+  ingestionFailures IngestionFailure[]
+
+  @@index([isActive, sourceType])
+  @@index([reputationScore(sort: Desc)])
+  @@map("sources")
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  articles Article[]
+
+  @@map("categories")
+}
+
+model Author {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  profileUrl   String?   @map("profile_url")
+  organization String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  articles Article[]
+
+  @@unique([name, organization])
+  @@map("authors")
+}
+
+model Article {
+  id               String        @id @default(uuid()) @db.Uuid
+  sourceId         String        @map("source_id") @db.Uuid
+  categoryId       String        @map("category_id") @db.Uuid
+  authorId         String?       @map("author_id") @db.Uuid
+  title            String
+  slug             String        @unique
+  originalUrl      String        @unique @map("original_url")
+  normalizedUrl    String        @unique @map("normalized_url")
+  canonicalUrl     String?       @map("canonical_url")
+  excerpt          String?
+  imageUrl         String?       @map("image_url")
+  body             String?
+  contentHash      String?       @unique @map("content_hash")
+  publishedAt      DateTime      @map("published_at") @db.Timestamptz(6)
+  fetchedAt        DateTime      @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  status           ArticleStatus @default(DRAFT)
+  duplicateOfId    String?       @map("duplicate_of_article_id") @db.Uuid
+  firstSeenAt      DateTime      @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime      @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  seenCount        Int           @default(1) @map("seen_count")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  source       Source             @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  author       Author?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  aiSummary    AiSummary?
+  articleTags  ArticleTag[]
+  analytics    ArticleAnalytics[]
+  duplicateOf  Article?           @relation("ArticleDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates   Article[]          @relation("ArticleDuplicates")
+
+  @@index([sourceId])
+  @@index([categoryId, publishedAt(sort: Desc)])
+  @@index([authorId])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([publishedAt(sort: Desc)])
+  @@map("articles")
+}
+
+model AiSummary {
+  id              String   @id @default(uuid()) @db.Uuid
+  articleId       String   @unique @map("article_id") @db.Uuid
+  summary         String
+  keyTakeaways    Json     @default("[]") @map("key_takeaways")
+  categories      Json     @default("[]")
+  tags            Json     @default("[]")
+  seoTitle        String?  @map("seo_title")
+  seoDescription  String?  @map("seo_description")
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(4, 2)
+  model           String
+  generatedAt     DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@map("ai_summaries")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  articleTags ArticleTag[]
+
+  @@map("tags")
+}
+
+model ArticleTag {
+  articleId String   @map("article_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+  @@map("article_tags")
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  isActive       Boolean   @default(true) @map("is_active")
+  preferences    Json      @default("{}")
+  subscribedAt   DateTime  @default(now()) @map("subscribed_at") @db.Timestamptz(6)
+  unsubscribedAt DateTime? @map("unsubscribed_at") @db.Timestamptz(6)
+
+  @@index([isActive])
+  @@map("newsletter_subscribers")
+}
+
+model ArticleAnalytics {
+  id                String   @id @default(uuid()) @db.Uuid
+  articleId         String   @map("article_id") @db.Uuid
+  eventDate         DateTime @map("event_date") @db.Date
+  views             Int      @default(0)
+  clicks            Int      @default(0)
+  shares            Int      @default(0)
+  newsletterClicks  Int      @default(0) @map("newsletter_clicks")
+  searchImpressions Int      @default(0) @map("search_impressions")
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, eventDate])
+  @@index([eventDate])
+  @@map("article_analytics")
+}
+
+model IngestionFailure {
+  id           String                 @id @default(uuid()) @db.Uuid
+  sourceId     String?                @map("source_id") @db.Uuid
+  url          String?
+  stage        String
+  errorMessage String                 @map("error_message")
+  errorCode    String?                @map("error_code")
+  payload      Json?
+  status       IngestionFailureStatus @default(OPEN)
+  attempts     Int                    @default(1)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  source Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId, status])
+  @@index([stage, createdAt])
+  @@map("ingestion_failures")
+}

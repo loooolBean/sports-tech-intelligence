@@ -2,35 +2,43 @@
 
 体育科技智能资讯平台 — 自动采集 RSS / 新闻网站内容，AI 生成摘要和 SEO 元数据，支持后台审核、Newsletter 订阅、全文搜索。
 
+## 在线访问
+
+- **网站**: https://sports-tech-intelligence.vercel.app
+- **GitHub**: https://github.com/loooolBean/sports-tech-intelligence
+
 ## 技术栈
 
 - **框架**: Next.js 15 (App Router) + React 19 + TypeScript
 - **数据库**: PostgreSQL (Supabase) + Prisma ORM
 - **认证**: Clerk（可选，未配置时自动禁用）
-- **AI**: OpenAI API（文章摘要、SEO 元数据生成）
-- **样式**: Tailwind CSS 3
+- **AI**: Xiaomi Mimo API（文章摘要、SEO 元数据生成）
+- **样式**: Tailwind CSS 3 + Framer Motion
+- **部署**: Vercel + GitHub
 
 ## 快速开始
 
 ### 1. 安装依赖
 
 ```bash
-cd E:\you-are-a-senior-saas-architect
+git clone https://github.com/loooolBean/sports-tech-intelligence.git
+cd sports-tech-intelligence
 npm install
 ```
 
 ### 2. 配置环境变量
 
-编辑 `.env` 文件：
+复制 `.env.example` 为 `.env` 并填入：
 
 ```env
 # 数据库（Supabase）
 DATABASE_URL="postgresql://postgres.xxxxx:password@aws-xxx.pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="postgresql://postgres.xxxxx:password@aws-xxx.pooler.supabase.com:5432/postgres"
 
-# OpenAI（用于 AI 摘要）
-OPENAI_API_KEY="sk-..."
-OPENAI_MODEL="gpt-4.1-mini"
+# AI 配置（Xiaomi Mimo）
+AI_API_KEY="your-mimo-api-key"
+AI_API_BASE_URL="https://token-plan-cn.xiaomimimo.com/v1"
+AI_MODEL="mimo-v2.5-pro"
 
 # 网站地址
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
@@ -68,8 +76,8 @@ npm run dev
 
 | 路径 | 页面 | 说明 |
 |------|------|------|
-| `/` | 首页 | 最新文章列表 |
-| `/article/[slug]` | 文章详情 | 正文 + AI 摘要 + Key Takeaways + 相关文章 |
+| `/` | 首页 | 最新文章列表（The Verge 风格） |
+| `/article/[slug]` | 文章详情 | 正文 + AI 摘要 + Key Takeaways + 相关文章（Medium 风格） |
 | `/category/[slug]` | 分类页 | 按分类筛选文章，支持分页 |
 | `/tag/[slug]` | 标签页 | 按标签筛选文章 |
 | `/search` | 搜索 | 全文搜索（标题、摘要、正文、标签） |
@@ -128,8 +136,8 @@ npm run seo
 3. 触发器：每天每 30 分钟
 4. 操作：启动程序
    - 程序：`node`
-   - 参数：`E:\you-are-a-senior-saas-architect\scripts\ingest-rss.cjs`
-   - 起始于：`E:\you-are-a-senior-saas-architect`
+   - 参数：`scripts/ingest-rss.cjs`
+   - 起始于：项目根目录
 
 ### Linux/Mac cron
 
@@ -180,12 +188,13 @@ npm run seo              # 手动生成 SEO 元数据
 
 ```
 ├── app/                          # Next.js App Router
-│   ├── page.tsx                  # 首页
+│   ├── page.tsx                  # 首页（The Verge 风格）
 │   ├── layout.tsx                # 根布局
-│   ├── client-layout.tsx         # Clerk 客户端布局
+│   ├── client-layout.tsx         # Clerk 客户端布局 + 导航栏（Linear 风格）
+│   ├── globals.css               # 全局样式 + 设计系统
 │   ├── sitemap.ts                # 动态 Sitemap
 │   ├── robots.ts                 # Robots.txt
-│   ├── article/[slug]/           # 文章详情
+│   ├── article/[slug]/           # 文章详情（Medium 风格）
 │   ├── category/[slug]/          # 分类页
 │   ├── tag/[slug]/               # 标签页
 │   ├── search/                   # 搜索页
@@ -211,32 +220,83 @@ npm run seo              # 手动生成 SEO 元数据
 │   │   ├── articles.ts           # 文章查询
 │   │   ├── categories.ts         # 分类查询
 │   │   ├── seo.ts                # SEO 元数据构建
-│   │   └── sitemap.ts            # Sitemap 数据查询
+│   │   ├── sitemap.ts            # Sitemap 数据查询
+│   │   └── utils.ts              # cn() 工具函数
 │   ├── services/                 # 业务逻辑层
 │   │   ├── rssIngestionService.ts      # RSS 采集服务
-│   │   ├── articleSummarizationService.ts  # AI 摘要服务
+│   │   ├── articleSummarizationService.ts  # AI 摘要服务（支持 Mimo）
 │   │   └── articleSeoMetadataService.ts    # SEO 元数据回填
 │   └── utils/
 │       └── content.ts            # 工具函数（slugify、hash、truncate）
 ├── prisma/
-│   └── schema.prisma             # 数据库 Schema
-├── .env                          # 环境变量（不提交到 Git）
+│   ├── schema.prisma             # 数据库 Schema
+│   └── migrations/               # 数据库迁移
+├── scripts/                      # 工具脚本
 ├── .env.example                  # 环境变量示例
 ├── middleware.ts                  # Clerk 认证中间件
 ├── next.config.ts                # Next.js 配置
-├── tsconfig.json                 # TypeScript 配置
+├── tailwind.config.ts            # Tailwind 配置 + 设计系统
+├── DESIGN_SYSTEM.md              # 设计系统文档
 └── package.json
 ```
 
 ---
 
+## 设计系统
+
+参考：
+- **首页**: The Verge — 大 hero + 编辑网格
+- **文章页**: Medium — 窄 prose + 专注阅读
+- **导航**: Linear — 极简深色导航
+- **组件**: shadcn/ui
+- **动画**: Framer Motion
+
+详细设计规范见 [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)
+
+---
+
 ## 工作流程
 
-1. **内容采集**: `RssIngestionService` 解析 RSS Feed，提取文章内容，去重后存入数据库
-2. **AI 处理**: `ArticleSummarizationService` 调用 OpenAI 生成摘要、Key Takeaways、分类、标签、SEO 元数据
+1. **内容采集**: `RssIngestionService` 解析 RSS Feed，提取文章内容和图片，去重后存入数据库
+2. **AI 处理**: `ArticleSummarizationService` 调用 Xiaomi Mimo API 生成摘要、Key Takeaways、分类、标签、SEO 元数据
 3. **人工审核**: 管理员在 `/admin/articles` 审核文章，可修改状态（发布/拒绝/归档）
 4. **SEO 优化**: 动态 Sitemap、JSON-LD 结构化数据、Open Graph 标签
 5. **Newsletter**: 用户订阅后可接收每日资讯推送
+
+---
+
+## 环境变量说明
+
+| 变量 | 必需 | 说明 |
+|------|------|------|
+| `DATABASE_URL` | ✅ | Supabase 连接池 URL |
+| `DIRECT_URL` | ✅ | Supabase 直连 URL（用于迁移） |
+| `AI_API_KEY` | ✅ | Xiaomi Mimo API Key |
+| `AI_API_BASE_URL` | ✅ | Mimo API 地址 |
+| `AI_MODEL` | ✅ | Mimo 模型名称 |
+| `NEXT_PUBLIC_SITE_URL` | ✅ | 网站 URL |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ⚠️ | Clerk 公钥（可选） |
+| `CLERK_SECRET_KEY` | ⚠️ | Clerk 密钥（可选） |
+| `CLERK_WEBHOOK_SECRET` | ⚠️ | Clerk Webhook 签名（可选） |
+| `ADMIN_EMAILS` | ⚠️ | 管理员邮箱（可选） |
+| `CRON_SECRET` | ⚠️ | Cron 接口密钥（可选） |
+
+---
+
+## 部署
+
+### Vercel 部署
+
+1. Fork 或克隆仓库
+2. 在 Vercel 导入项目
+3. 配置环境变量
+4. 部署
+
+### 自定义域名
+
+1. 在 Vercel 项目设置 → Domains
+2. 添加自定义域名
+3. 配置 DNS 记录
 
 ---
 
@@ -246,3 +306,10 @@ npm run seo              # 手动生成 SEO 元数据
 - 所有页面都是动态渲染（`force-dynamic`），不使用静态生成
 - `.env` 文件不要提交到 Git
 - Supabase 的 `DIRECT_URL` 用于数据库迁移，`DATABASE_URL` 用于应用连接
+- AI 功能使用 Xiaomi Mimo API，兼容 OpenAI 格式
+
+---
+
+## 许可证
+
+Private - All Rights Reserved

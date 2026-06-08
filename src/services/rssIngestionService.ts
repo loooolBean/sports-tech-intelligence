@@ -188,7 +188,8 @@ export class RssIngestionService {
 
     const category = await this.resolveCategory(summary.categories[0] ?? "Uncategorized");
 
-    await this.db.$transaction(async (tx) => {
+    await this.db.$transaction(
+      async (tx) => {
       await tx.article.update({
         where: { id: input.articleId },
         data: {
@@ -244,7 +245,9 @@ export class RssIngestionService {
           update: {},
         });
       }
-    });
+    },
+    { timeout: 30_000 },
+    );
   }
 
   private async extractArticle(url: string, item: FeedItem): Promise<{ content: string; canonicalUrl?: string; imageUrl?: string }> {

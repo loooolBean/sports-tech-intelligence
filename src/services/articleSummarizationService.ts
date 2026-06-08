@@ -1,13 +1,16 @@
 import OpenAI from "openai";
 import { z } from "zod";
 
+const truncSeoTitle = (v: string) => (v.length > 70 ? v.slice(0, 67) + "..." : v);
+const truncSeoDesc = (v: string) => (v.length > 170 ? v.slice(0, 167) + "..." : v);
+
 const summarizationSchema = z.object({
   summary: z.string().min(1),
   keyTakeaways: z.array(z.string()).default([]),
   categories: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
-  seoTitle: z.string().min(1).max(70),
-  seoDescription: z.string().min(1).max(170),
+  seoTitle: z.string().min(1).transform(truncSeoTitle),
+  seoDescription: z.string().min(1).transform(truncSeoDesc),
   confidenceScore: z.number().min(0).max(1),
 });
 
@@ -28,7 +31,12 @@ export class ArticleSummarizationService {
     const apiKey = options?.apiKey ?? process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY;
     const baseURL = options?.baseURL ?? process.env.AI_API_BASE_URL ?? "https://api.openai.com/v1";
 
-    this.client = new OpenAI({ apiKey, baseURL });
+    this.client = new OpenAI({
+      apiKey,
+      baseURL,
+      timeout: 30_000,
+      maxRetries: 2,
+    });
     this.model = options?.model ?? process.env.AI_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
   }
 

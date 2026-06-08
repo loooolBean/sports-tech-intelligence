@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "ingest": "node scripts/ingest-rss.cjs",
-    "seo": "node scripts/generate-seo.cjs"
+    "seo": "node scripts/generate-seo.cjs",
+    "seed:sources": "npx tsx scripts/seed-sports-tech-sources.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",

@@ -70,7 +70,9 @@ export class ArticleSeoMetadataService {
       publishedAt: article.publishedAt,
     });
 
-    await this.db.$transaction(async (tx) => {
+    await this.db.$transaction(
+      async (tx) => {
+      // increased timeout for Supabase pooler latency
       await tx.aiSummary.upsert({
         where: { articleId: article.id },
         create: {
@@ -125,7 +127,9 @@ export class ArticleSeoMetadataService {
           update: {},
         });
       }
-    });
+    },
+    { timeout: 30_000 },
+    );
 
     return {
       articleId: article.id,

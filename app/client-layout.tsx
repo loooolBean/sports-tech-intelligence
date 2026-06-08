@@ -188,12 +188,32 @@ function Navigation() {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="border-t border-border bg-bg">
+      <div className="mx-auto max-w-content px-4 py-10 lg:px-8">
+        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+          <p className="text-caption text-text-tertiary">
+            &copy; {new Date().getFullYear()} Sports Technology Intelligence
+          </p>
+          <nav className="flex gap-4">
+            <Link href="/privacy" className="text-caption text-text-tertiary hover:text-text-secondary transition-colors">
+              Privacy
+            </Link>
+          </nav>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export function ClientLayout({ children }: { children: ReactNode }) {
   if (!hasClerkKey || !ClerkProvider) {
     return (
       <>
         <Navigation />
         {children}
+        <Footer />
       </>
     );
   }
@@ -202,6 +222,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     <ClerkProvider>
       <Navigation />
       {children}
+      <Footer />
     </ClerkProvider>
   );
 }

@@ -5,10 +5,16 @@ import type { CategoryData, CategoryPageData } from "./categories";
 const siteName = "Sports Technology Intelligence";
 const defaultDescription =
   "Sports technology news and intelligence for coaches, sports scientists, and wearable technology professionals.";
+const PRODUCTION_URL = "https://sports-tech-intelligence.vercel.app";
 const defaultOgImagePath = "/og/sports-technology.jpg";
 
 export function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com").replace(/\/$/, "");
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  // Fall back to production URL if env var is unset, empty, or a Vercel preview URL
+  if (!raw || raw.includes("-") && raw.endsWith(".vercel.app") && raw !== PRODUCTION_URL) {
+    return PRODUCTION_URL;
+  }
+  return raw.replace(/\/$/, "");
 }
 
 export function getArticleCanonicalUrl(article: Pick<ArticlePageData, "slug">): string {

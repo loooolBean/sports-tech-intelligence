@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, Sun, Moon } from "lucide-react";
 import { cn } from "../src/lib/utils";
 import type { ReactNode } from "react";
 
@@ -29,12 +29,39 @@ const UserButton = hasClerkKey
 
 const NAV_LINKS = [
   { href: "/search", label: "Search" },
+  { href: "/category", label: "Categories" },
   { href: "/newsletter", label: "Newsletter" },
 ];
+
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = stored ? stored === "dark" : prefersDark;
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+    setMounted(true);
+  }, []);
+
+  const toggle = useCallback(() => {
+    setDark((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  }, []);
+
+  return { dark, toggle, mounted };
+}
 
 function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { dark, toggle, mounted } = useDarkMode();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
@@ -64,6 +91,14 @@ function Navigation() {
               {link.label}
             </Link>
           ))}
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggle}
+            className="rounded-md p-2 text-text-tertiary transition-colors hover:bg-bg-elevated hover:text-text-secondary"
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {mounted && dark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           {hasClerkKey && SignedIn && (
             <SignedIn>
               <Link

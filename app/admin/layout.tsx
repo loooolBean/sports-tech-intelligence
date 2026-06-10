@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { requireAdminUser } from "../../src/lib/auth";
@@ -23,12 +23,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <main className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[220px_1fr]">
       <aside>
-        <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Admin</p>
+        <p className="overline">Admin</p>
         <nav className="mt-4 grid gap-2">
           {navItems.map((item) => (
             <Link
               key={item.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-md px-3 py-2 text-caption font-medium text-text-secondary transition-colors hover:bg-bg-elevated"
               href={item.href}
             >
               {item.label}

@@ -209,6 +209,38 @@ const SOURCES: SourceSeed[] = [
     reputationScore: 7,
     category: "Sports News",
   },
+  {
+    name: "WHOOP Blog",
+    rssUrl: "https://www.whoop.com/blog/feed/",
+    websiteUrl: "https://www.whoop.com/blog",
+    sourceType: "BLOG",
+    reputationScore: 8,
+    category: "Wearable Technology",
+  },
+  {
+    name: "Second Spectrum",
+    rssUrl: "https://www.secondspectrum.com/blog/feed",
+    websiteUrl: "https://www.secondspectrum.com",
+    sourceType: "RESEARCH_WEBSITE",
+    reputationScore: 8,
+    category: "Sports Analytics",
+  },
+  {
+    name: "Hawk-Eye Innovations",
+    rssUrl: "https://www.hawkeyeinnovations.com/feed",
+    websiteUrl: "https://www.hawkeyeinnovations.com",
+    sourceType: "NEWS_WEBSITE",
+    reputationScore: 8,
+    category: "Sports Technology",
+  },
+  {
+    name: "MIT Sloan Sports Analytics",
+    rssUrl: "https://www.sloansportsconference.com/feed",
+    websiteUrl: "https://www.sloansportsconference.com",
+    sourceType: "RESEARCH_WEBSITE",
+    reputationScore: 9,
+    category: "Sports Analytics",
+  },
 ];
 
 async function main() {

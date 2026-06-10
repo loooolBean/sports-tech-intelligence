@@ -27,6 +27,19 @@ export interface IngestionResult {
 
 export class RssIngestionService {
   private readonly parser = new Parser<unknown, FeedItem>();
+  private static readonly RELEVANCE_KEYWORDS = [
+    "athlete", "athletes", "sports", "sport", "training", "wearable", "wearables",
+    "gps", "performance", "coaching", "fitness", "recovery", "analytics",
+    "tracking", "monitor", "monitoring", "sensor", "sensors", "vo2",
+    "heart rate", "hrv", "injury", "rehabilitation", "exercise",
+    "biometric", "biomechanics", "nfl", "nba", "mlb", "premier league",
+    "olympic", "marathon", "cycling", "running", "swimming", "triathlon",
+  ];
+
+  private isRelevant(text: string): boolean {
+    const lower = text.toLowerCase();
+    return RssIngestionService.RELEVANCE_KEYWORDS.some((kw) => lower.includes(kw));
+  }
 
   constructor(
     private readonly db: PrismaClient = defaultPrisma,
@@ -105,6 +118,13 @@ export class RssIngestionService {
     }
 
     const extracted = await this.extractArticle(item.link, item);
+
+    // Content relevance filter — skip off-topic articles
+    const combinedText = `${item.title} ${item.contentSnippet ?? ""} ${extracted.content ?? ""}`;
+    if (!this.isRelevant(combinedText)) {
+      return false;
+    }
+
     const contentHash = hashContent(`${item.title}\n${extracted.content}`);
 
     const duplicateByHash = await this.db.article.findUnique({

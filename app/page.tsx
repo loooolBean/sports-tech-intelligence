@@ -6,8 +6,17 @@ import { formatDistanceToNow } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  const [featured, ...articles] = await prisma.article.findMany({
+const PAGE_SIZE = 12;
+
+type HomePageProps = {
+  searchParams: Promise<{ page?: string }>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, Number(pageParam) || 1);
+
+  const articles = await prisma.article.findMany({
     where: {
       status: ArticleStatus.PUBLISHED,
       duplicateOfId: null,
@@ -20,10 +29,17 @@ export default async function HomePage() {
     orderBy: {
       publishedAt: "desc",
     },
-    take: 9,
+    take: currentPage === 1 ? PAGE_SIZE + 1 : PAGE_SIZE,
+    skip: currentPage === 1 ? 0 : (currentPage - 1) * PAGE_SIZE,
   });
 
-  const remaining = articles.slice(0, 8);
+  const totalPublished = await prisma.article.count({
+    where: { status: ArticleStatus.PUBLISHED, duplicateOfId: null },
+  });
+  const totalPages = Math.ceil(totalPublished / PAGE_SIZE);
+
+  const featured = currentPage === 1 ? articles[0] : null;
+  const remaining = currentPage === 1 ? articles.slice(1) : articles;
 
   return (
     <main className="min-h-screen bg-bg">
@@ -179,6 +195,42 @@ export default async function HomePage() {
       </section>
 
       {/* Newsletter CTA */}
+      {totalPages > 1 && (
+        <section className="mx-auto max-w-content px-4 py-8 lg:px-8">
+          <nav className="flex items-center justify-center gap-2">
+            {currentPage > 1 && (
+              <Link
+                href={`/?page=${currentPage - 1}`}
+                className="rounded-md border border-border px-4 py-2 text-caption font-medium text-text-secondary transition-colors hover:bg-bg-elevated"
+              >
+                Previous
+              </Link>
+            )}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Link
+                key={page}
+                href={`/?page=${page}`}
+                className={`rounded-md px-3 py-2 text-caption font-medium transition-colors ${
+                  page === currentPage
+                    ? "bg-accent text-white"
+                    : "text-text-secondary hover:bg-bg-elevated"
+                }`}
+              >
+                {page}
+              </Link>
+            ))}
+            {currentPage < totalPages && (
+              <Link
+                href={`/?page=${currentPage + 1}`}
+                className="rounded-md border border-border px-4 py-2 text-caption font-medium text-text-secondary transition-colors hover:bg-bg-elevated"
+              >
+                Next
+              </Link>
+            )}
+          </nav>
+        </section>
+      )}
+
       <section className="border-t border-border">
         <div className="mx-auto max-w-content px-4 py-16 text-center lg:px-8">
           <h2 className="text-h2 text-text-primary">

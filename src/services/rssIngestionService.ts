@@ -188,9 +188,9 @@ export class RssIngestionService {
 
     const category = await this.resolveCategory(summary.categories[0] ?? "Uncategorized");
 
-    await this.db.$transaction(
-      async (tx) => {
-      await tx.article.update({
+    // Use sequential operations instead of interactive transaction
+    // to avoid pgbouncer "Transaction not found" errors on Supabase
+      await this.db.article.update({
         where: { id: input.articleId },
         data: {
           categoryId: category.id,
@@ -198,7 +198,7 @@ export class RssIngestionService {
         },
       });
 
-      await tx.aiSummary.upsert({
+      await this.db.aiSummary.upsert({
         where: { articleId: input.articleId },
         create: {
           articleId: input.articleId,
@@ -208,7 +208,7 @@ export class RssIngestionService {
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
-          confidenceScore: new Prisma.Decimal(summary.confidenceScore),
+          confidenceScore: new Prisma.Decimal(summary.confidenceScore ?? 0.8),
           model: this.summarizer.modelName,
         },
         update: {
@@ -218,20 +218,20 @@ export class RssIngestionService {
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
-          confidenceScore: new Prisma.Decimal(summary.confidenceScore),
+          confidenceScore: new Prisma.Decimal(summary.confidenceScore ?? 0.8),
           model: this.summarizer.modelName,
           generatedAt: new Date(),
         },
       });
 
       for (const tagName of summary.tags) {
-        const tag = await tx.tag.upsert({
+        const tag = await this.db.tag.upsert({
           where: { slug: slugify(tagName) },
           create: { name: tagName, slug: slugify(tagName) },
           update: { name: tagName },
         });
 
-        await tx.articleTag.upsert({
+        await this.db.articleTag.upsert({
           where: {
             articleId_tagId: {
               articleId: input.articleId,
@@ -245,9 +245,6 @@ export class RssIngestionService {
           update: {},
         });
       }
-    },
-    { timeout: 30_000 },
-    );
   }
 
   private async extractArticle(url: string, item: FeedItem): Promise<{ content: string; canonicalUrl?: string; imageUrl?: string }> {

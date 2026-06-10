@@ -11,7 +11,7 @@ const summarizationSchema = z.object({
   tags: z.array(z.string()).default([]),
   seoTitle: z.string().min(1).transform(truncSeoTitle),
   seoDescription: z.string().min(1).transform(truncSeoDesc),
-  confidenceScore: z.number().min(0).max(1),
+  confidenceScore: z.number().min(0).max(1).default(0.8),
 });
 
 export type ArticleSummaryResult = z.infer<typeof summarizationSchema>;

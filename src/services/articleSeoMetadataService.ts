@@ -70,10 +70,9 @@ export class ArticleSeoMetadataService {
       publishedAt: article.publishedAt,
     });
 
-    await this.db.$transaction(
-      async (tx) => {
-      // increased timeout for Supabase pooler latency
-      await tx.aiSummary.upsert({
+    // Use sequential operations instead of interactive transaction
+    // to avoid pgbouncer "Transaction not found" errors on Supabase
+      await this.db.aiSummary.upsert({
         where: { articleId: article.id },
         create: {
           articleId: article.id,
@@ -83,7 +82,7 @@ export class ArticleSeoMetadataService {
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
-          confidenceScore: new Prisma.Decimal(summary.confidenceScore),
+          confidenceScore: new Prisma.Decimal(summary.confidenceScore ?? 0.8),
           model: this.summarizer.modelName,
         },
         update: {
@@ -93,13 +92,13 @@ export class ArticleSeoMetadataService {
           tags: article.aiSummary?.tags ?? summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
-          confidenceScore: new Prisma.Decimal(summary.confidenceScore),
+          confidenceScore: new Prisma.Decimal(summary.confidenceScore ?? 0.8),
           model: this.summarizer.modelName,
           generatedAt: new Date(),
         },
       });
 
-      await tx.article.update({
+      await this.db.article.update({
         where: { id: article.id },
         data: {
           excerpt: article.excerpt ?? truncate(summary.summary.replace(/\s+/g, " "), 280),
@@ -107,13 +106,13 @@ export class ArticleSeoMetadataService {
       });
 
       for (const tagName of summary.tags) {
-        const tag = await tx.tag.upsert({
+        const tag = await this.db.tag.upsert({
           where: { slug: slugify(tagName) },
           create: { name: tagName, slug: slugify(tagName) },
           update: { name: tagName },
         });
 
-        await tx.articleTag.upsert({
+        await this.db.articleTag.upsert({
           where: {
             articleId_tagId: {
               articleId: article.id,
@@ -127,9 +126,6 @@ export class ArticleSeoMetadataService {
           update: {},
         });
       }
-    },
-    { timeout: 30_000 },
-    );
 
     return {
       articleId: article.id,

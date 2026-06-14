@@ -1,83 +1,87 @@
-import { PrismaClient } from "@prisma/client";
+import dotenv from "dotenv";
+dotenv.config();
+
 import { JSDOM } from "jsdom";
+import { prisma } from "../src/lib/prisma";
 
-const prisma = new PrismaClient();
-
+/**
+ * Backfill imageUrl for articles that don't have one.
+ * Fetches each article's original URL and extracts og:image or first <img>.
+ */
 async function main() {
-  console.log("Backfilling images for existing articles...\n");
-
   const articles = await prisma.article.findMany({
-    where: { imageUrl: null },
+    where: {
+      status: "PUBLISHED",
+      duplicateOfId: null,
+      imageUrl: null,
+    },
     select: { id: true, title: true, originalUrl: true },
-    take: 50,
+    take: 200,
+    orderBy: { publishedAt: "desc" },
   });
 
-  console.log(`Found ${articles.length} articles without images\n`);
+  console.log(`[Image Backfill] Found ${articles.length} articles without images.`);
 
   let updated = 0;
   let failed = 0;
 
   for (const article of articles) {
     try {
-      console.log(`Fetching: ${article.title.slice(0, 50)}...`);
-
-      const response = await fetch(article.originalUrl, {
-        headers: { "User-Agent": "SportsTechBot/1.0" },
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (!response.ok) {
-        console.log(`  Failed: HTTP ${response.status}`);
-        failed++;
-        continue;
-      }
-
-      const html = await response.text();
-      const dom = new JSDOM(html);
-
-      // Try og:image first
-      const ogImage = dom.window.document.querySelector("meta[property='og:image']")?.getAttribute("content");
-
-      // Try twitter:image
-      const twitterImage = dom.window.document.querySelector("meta[name='twitter:image']")?.getAttribute("content");
-
-      // Try first article image
-      const firstImage = dom.window.document.querySelector("article img, .article-content img, main img, .post-content img")?.getAttribute("src");
-
-      const imageUrl = ogImage || twitterImage || firstImage;
-
+      const imageUrl = await fetchImage(article.originalUrl);
       if (imageUrl) {
-        // Make relative URLs absolute
-        let absoluteUrl = imageUrl;
-        if (imageUrl.startsWith("//")) {
-          absoluteUrl = `https:${imageUrl}`;
-        } else if (imageUrl.startsWith("/")) {
-          const urlObj = new URL(article.originalUrl);
-          absoluteUrl = `${urlObj.origin}${imageUrl}`;
-        }
-
         await prisma.article.update({
           where: { id: article.id },
-          data: { imageUrl: absoluteUrl },
+          data: { imageUrl },
         });
-
         updated++;
-        console.log(`  Updated: ${absoluteUrl.slice(0, 80)}`);
+        console.log(`  ✅ ${article.title.slice(0, 60)} → ${imageUrl.slice(0, 80)}`);
       } else {
-        console.log("  No image found");
-        failed++;
+        console.log(`  ⏭️  ${article.title.slice(0, 60)} → no image found`);
       }
-    } catch (err: any) {
-      console.log(`  Error: ${err.message}`);
+    } catch (e) {
       failed++;
+      console.log(`  ❌ ${article.title.slice(0, 60)} → ${e instanceof Error ? e.message : "unknown error"}`);
     }
+    // Be polite to servers
+    await new Promise((r) => setTimeout(r, 500));
   }
 
-  console.log(`\nDone. Updated: ${updated}, Failed: ${failed}`);
-  await prisma.$disconnect();
+  console.log(`\n[Image Backfill] Done: ${updated} updated, ${failed} failed, ${articles.length - updated - failed} no image`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+async function fetchImage(url: string): Promise<string | undefined> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "SportsTechIntelligenceBot/1.0" },
+    redirect: "follow",
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!response.ok) return undefined;
+
+  const html = await response.text();
+  const dom = new JSDOM(html, { url });
+  const doc = dom.window.document;
+
+  // Priority: og:image
+  const ogImage = doc.querySelector("meta[property='og:image']")?.getAttribute("content");
+  if (ogImage && ogImage.startsWith("http")) return ogImage;
+
+  // twitter:image
+  const twitterImage = doc.querySelector("meta[name='twitter:image']")?.getAttribute("content")
+    ?? doc.querySelector("meta[property='twitter:image']")?.getAttribute("content");
+  if (twitterImage && twitterImage.startsWith("http")) return twitterImage;
+
+  // First large image in article/main content
+  const contentImg = doc.querySelector("article img[src], .article-content img[src], .post-content img[src], main img[src]");
+  const src = contentImg?.getAttribute("src");
+  if (src && src.startsWith("http")) return src;
+
+  return undefined;
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error("[Image Backfill] Fatal:", e);
+    process.exit(1);
+  });

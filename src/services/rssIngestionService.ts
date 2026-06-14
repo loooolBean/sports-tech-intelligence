@@ -8,6 +8,8 @@ import { ArticleSummarizationService } from "./articleSummarizationService";
 
 type FeedItem = Parser.Item & {
   "content:encoded"?: string;
+  "media:content"?: string | { $: { url: string } };
+  "media:thumbnail"?: string | { $: { url: string } };
 };
 
 export interface IngestRssSourceInput {
@@ -268,12 +270,15 @@ export class RssIngestionService {
   }
 
   private async extractArticle(url: string, item: FeedItem): Promise<{ content: string; canonicalUrl?: string; imageUrl?: string }> {
+    // Priority 1: RSS feed-level image fields (most reliable)
+    const feedImage = this.extractImageFromFeedItem(item);
+
     const feedContent = item["content:encoded"] ?? item.content ?? item.contentSnippet;
     if (feedContent && feedContent.trim().length > 500) {
       return {
         content: this.htmlToText(feedContent),
         canonicalUrl: url,
-        imageUrl: this.extractImageFromHtml(feedContent),
+        imageUrl: feedImage || this.extractImageFromHtml(feedContent),
       };
     }
 
@@ -302,9 +307,53 @@ export class RssIngestionService {
     // Extract image from og:image or first image in content
     const ogImage = dom.window.document.querySelector("meta[property='og:image']")?.getAttribute("content");
     const firstImage = dom.window.document.querySelector("article img, .article-content img, main img")?.getAttribute("src");
-    const imageUrl = ogImage || firstImage || this.extractImageFromHtml(feedContent ?? "");
+    const imageUrl = feedImage || ogImage || firstImage || this.extractImageFromHtml(feedContent ?? "");
 
     return { content, canonicalUrl, imageUrl };
+  }
+
+  /**
+   * Extract image URL from RSS feed item fields:
+   * - item.enclosure (most common, e.g. WordPress, BBC, ESPN)
+   * - item["media:content"] (Yahoo/Media RSS)
+   * - item["media:thumbnail"] (Yahoo/Media RSS)
+   * - item.image / item.itunes:image (podcast-style feeds)
+   */
+  private extractImageFromFeedItem(item: FeedItem): string | undefined {
+    // enclosure: { url, type: "image/jpeg", length }
+    if (item.enclosure?.url && (!item.enclosure.type || item.enclosure.type.startsWith("image"))) {
+      return item.enclosure.url;
+    }
+
+    // media:content — can be string URL or object { $: { url } }
+    const mediaContent = item["media:content"];
+    if (mediaContent) {
+      if (typeof mediaContent === "string" && mediaContent.startsWith("http")) return mediaContent;
+      if (typeof mediaContent === "object" && mediaContent.$?.url) return mediaContent.$.url;
+    }
+
+    // media:thumbnail — same shape
+    const mediaThumb = item["media:thumbnail"];
+    if (mediaThumb) {
+      if (typeof mediaThumb === "string" && mediaThumb.startsWith("http")) return mediaThumb;
+      if (typeof mediaThumb === "object" && mediaThumb.$?.url) return mediaThumb.$.url;
+    }
+
+    // item.image (rss-parser normalizes some feeds)
+    const itemImage = (item as Record<string, unknown>)["image"];
+    if (itemImage && typeof itemImage === "object" && itemImage !== null) {
+      const url = (itemImage as Record<string, unknown>)["url"];
+      if (typeof url === "string" && url.startsWith("http")) return url;
+    }
+
+    // itunes:image
+    const itunesImage = (item as Record<string, unknown>)["itunes:image"];
+    if (itunesImage && typeof itunesImage === "object" && itunesImage !== null) {
+      const href = (itunesImage as Record<string, unknown>)["href"];
+      if (typeof href === "string" && href.startsWith("http")) return href;
+    }
+
+    return undefined;
   }
 
   private extractImageFromHtml(html: string): string | undefined {

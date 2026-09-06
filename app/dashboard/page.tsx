@@ -21,30 +21,32 @@ export default async function DashboardPage() {
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <Link
-              href="/newsletter"
-              className="group card-surface p-6"
-            >
-              <h2 className="text-h3 text-text-primary group-hover:text-accent transition-colors">
-                Newsletter Preferences
-              </h2>
+            <div className="card-surface p-6">
+              <h2 className="text-h3 text-text-primary">Newsletter Preferences</h2>
               <p className="mt-2 text-body text-text-secondary">
                 Subscribe to the daily sports technology briefing.
               </p>
-            </Link>
+              <Link
+                className="mt-5 inline-flex rounded-md border border-border px-4 py-2 text-caption font-medium text-text-primary transition-colors hover:border-accent hover:text-accent"
+                href="/newsletter"
+              >
+                Manage newsletter
+              </Link>
+            </div>
 
             {user.role === "ADMIN" && (
-              <Link
-                href="/admin"
-                className="group card-surface p-6"
-              >
-                <h2 className="text-h3 text-text-primary group-hover:text-accent transition-colors">
-                  Admin Console
-                </h2>
+              <div className="card-surface p-6">
+                <h2 className="text-h3 text-text-primary">Admin Console</h2>
                 <p className="mt-2 text-body text-text-secondary">
                   Manage articles, sources, subscribers, and ingestion failures.
                 </p>
-              </Link>
+                <Link
+                  className="mt-5 inline-flex rounded-md bg-accent px-4 py-2 text-caption font-medium text-white transition-colors hover:bg-accent-hover"
+                  href="/admin"
+                >
+                  Open Admin Console
+                </Link>
+              </div>
             )}
           </div>
         </div>

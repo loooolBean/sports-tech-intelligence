@@ -1,317 +1,354 @@
 # Sports Technology Intelligence Platform
 
-体育科技智能资讯平台 — 自动采集 RSS / 新闻网站内容，AI 生成摘要和 SEO 元数据，支持后台审核、Newsletter 订阅、全文搜索。
+体育科技资讯平台：从 RSS 获取文章，提取正文和图片，生成 AI 摘要、要点、分类、标签及 SEO 元数据，再由管理员审核发布。
 
-## 在线访问
+## 项目地址
 
-- **网站**: https://sports-tech-intelligence.vercel.app
-- **GitHub**: https://github.com/loooolBean/sports-tech-intelligence
+- 网站：[Sports Technology Intelligence](https://sports-tech-intelligence.vercel.app)
+- 登录：[账号登录](https://sports-tech-intelligence.vercel.app/sign-in)
+- 后台：[管理后台](https://sports-tech-intelligence.vercel.app/admin)
+- GitHub：[loooolBean/sports-tech-intelligence](https://github.com/loooolBean/sports-tech-intelligence)
+- 当前本地目录：`E:\you-are-a-senior-saas-architect`
+
+### 最近验证状态
+
+截至 2026-09-05：
+
+- Vercel 线上首页和登录页返回 HTTP 200，首页能够读取文章，没有 Prisma 或数据库连接错误。
+- Supabase 免费项目曾因闲置暂停，现已恢复并通过 `SELECT 1` 连接测试。免费项目以后仍可能再次暂停。
+- 本地开发服务器在 `http://localhost:3000` 正常运行，首页返回 HTTP 200。
+- 未登录直接访问 `/dashboard` 或 `/admin` 目前可能返回 404；请先打开 `/sign-in` 登录。
+- Git 远程仓库与上面的 GitHub 地址一致。仓库同时存在不同提交的 `main` 与 `master` 分支，发布前需要确认 Vercel 绑定的生产分支。
+
+## 当前能做什么
+
+| 模块 | 当前实现 |
+| --- | --- |
+| 内容采集 | 遍历启用且有 RSS URL 的来源，提取正文和图片，关键词相关性筛选、去重、记录失败 |
+| AI 处理 | 生成摘要、关键要点、分类、标签、SEO 标题和描述 |
+| 阅读与发现 | 首页、文章详情、分类、标签、关键词搜索、深浅色主题 |
+| 后台运营 | 文章编辑与发布、来源启停、分类管理、标签查看、失败日志、订阅者管理 |
+| SEO 与订阅源 | Sitemap、Robots、结构化数据、Open Graph、`/feed.xml` |
+| Newsletter | 保存订阅邮箱、查看订阅者；尚未实现邮件投递、每日摘要发送和退订流程 |
+
+标准采集接口将新文章保存为 **DRAFT**，不会自动发布。只有 **PUBLISHED** 文章才进入公开文章列表。来源类型可选新闻网站、博客等，但标准采集入口仍要求提供 RSS URL，并非输入任意网站就能全站爬取。
 
 ## 技术栈
 
-- **框架**: Next.js 15 (App Router) + React 19 + TypeScript
-- **数据库**: PostgreSQL (Supabase) + Prisma ORM
-- **认证**: Clerk（可选，未配置时自动禁用）
-- **AI**: Xiaomi Mimo API（文章摘要、SEO 元数据生成）
-- **样式**: Tailwind CSS 3 + Framer Motion
-- **部署**: Vercel + GitHub
+Next.js 15 App Router、React 19、TypeScript、Tailwind CSS 3、Framer Motion；PostgreSQL + Prisma 6；Clerk 登录；OpenAI SDK 对接可配置的 AI 服务；Vercel 部署。
 
-## 快速开始
+AI 服务由 `AI_API_KEY`、`AI_API_BASE_URL`、`AI_MODEL` 决定，并非固定使用某一家供应商。当前源码调用 `chat.completions.create`，使用 JSON object 输出并经 Zod 校验；`AGENTS.md` 中的 Responses API 描述与当前实现不一致，后续应统一。
 
-### 1. 安装依赖
+## 本地启动
 
-```bash
+以下以 Windows PowerShell 为例。准备 Node.js、npm、可连接的 PostgreSQL、AI 服务凭据及 Clerk 应用。下列命令使用 Node 的 `--env-file`，需要 Node.js 20.6 或更高版本；本次检查机器上的 Node 为 v24.16.0。
+
+### 已配置项目的最快启动
+
+如果依赖、`.env` 和数据库都已配置，在普通 Windows PowerShell 中运行：
+
+```powershell
+Set-Location 'E:\you-are-a-senior-saas-architect'
+npm run prisma:generate
+npm run dev
+```
+
+看到 `Ready` 后打开 [http://localhost:3000](http://localhost:3000)。开发服务器需要保持运行；关闭该 PowerShell 窗口或按 `Ctrl + C` 会停止网站。
+
+如果出现 `Error opening a TLS connection: 安全包中没有可用的凭证`，请从普通 Windows PowerShell 启动服务，不要从受限的自动化沙箱进程启动。
+
+### 1. 进入项目并安装依赖
+
+已有本地项目：
+
+```powershell
+Set-Location 'E:\you-are-a-senior-saas-architect'
+npm ci
+```
+
+新机器：
+
+```powershell
 git clone https://github.com/loooolBean/sports-tech-intelligence.git
-cd sports-tech-intelligence
-npm install
+Set-Location sports-tech-intelligence
+npm ci
 ```
 
 ### 2. 配置环境变量
 
-复制 `.env.example` 为 `.env` 并填入：
+仅在没有 `.env` 时复制，保留已有配置：
 
-```env
-# 数据库（Supabase）
-DATABASE_URL="postgresql://postgres.xxxxx:password@aws-xxx.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.xxxxx:password@aws-xxx.pooler.supabase.com:5432/postgres"
-
-# AI 配置（Xiaomi Mimo）
-AI_API_KEY="your-mimo-api-key"
-AI_API_BASE_URL="https://token-plan-cn.xiaomimimo.com/v1"
-AI_MODEL="mimo-v2.5-pro"
-
-# 网站地址
-NEXT_PUBLIC_SITE_URL="http://localhost:3000"
-
-# Clerk 认证（可选）
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
-CLERK_SECRET_KEY="sk_test_..."
-CLERK_WEBHOOK_SECRET="whsec_..."
-
-# 管理员邮箱（登录后自动获得 ADMIN 权限）
-ADMIN_EMAILS="your@email.com"
-
-# Cron 接口密钥
-CRON_SECRET="your-secret"
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
+
+编辑 `.env`：
+
+| 变量 | 用途与要求 |
+| --- | --- |
+| `DATABASE_URL` | 应用数据库连接，必填；可使用 Supabase 提供的连接池地址 |
+| `DIRECT_URL` | Prisma 迁移连接，必填；本地 PostgreSQL 可与 `DATABASE_URL` 相同 |
+| `AI_API_KEY` | 采集时生成摘要、SEO 回填需要；兼容读取 `OPENAI_API_KEY` |
+| `AI_API_BASE_URL` | AI 服务地址；默认值见 `.env.example`，应与所选供应商匹配 |
+| `AI_MODEL` | 该服务实际支持的模型名；兼容读取 `OPENAI_MODEL` |
+| `NEXT_PUBLIC_SITE_URL` | 本地填写 `http://localhost:3000`，部署时填写正式网站地址 |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | 真实 Clerk 公钥，不能直接保留 `pk_test_...` 占位符 |
+| `CLERK_SECRET_KEY` | 与公钥对应的 Clerk 服务端密钥 |
+| `CLERK_WEBHOOK_SECRET` | 配置 Clerk Webhook 同步时使用 |
+| `ADMIN_EMAILS` | 管理员邮箱，多个用逗号分隔；需与登录账号主邮箱一致 |
+| `CRON_SECRET` | 采集与 SEO 接口的共享密钥，本地调用与服务端保持一致 |
+
+不要提交 `.env` 或真实密钥。当前 Cron 接口在未设置 `CRON_SECRET` 时会跳过鉴权，部署时必须配置。
+
+**Clerk 的现有限制：** 前端会根据公钥决定是否显示认证组件，但 `middleware.ts` 仍无条件启用 Clerk，服务端认证也没有完整禁用分支。因此不要把“不配置 Clerk”当作已验证可用的运行模式；要使用后台，请配置有效的 Clerk 密钥和管理员邮箱。
 
 ### 3. 初始化数据库
 
-```bash
-npm run prisma:generate    # 生成 Prisma Client
-npm run prisma:migrate     # 创建数据库表
+对全新的本地开发数据库执行：
+
+```powershell
+npm run prisma:generate
+npm run prisma:migrate
 ```
 
-### 4. 启动开发服务器
+迁移命令实际是 `prisma migrate dev`，用于开发。生产环境应用已有迁移使用 `npx prisma migrate deploy`，不要对生产库运行开发迁移或重置操作。
 
-```bash
+### 4. 启动网站
+
+```powershell
 npm run dev
 ```
 
-打开 http://localhost:3000
+打开 [本地首页](http://localhost:3000)。通过 `/sign-up` 注册或 `/sign-in` 登录，再进入 `/admin`。当主邮箱包含在 `ADMIN_EMAILS` 中时，读取用户资料会将其设为 ADMIN。
 
----
+如果数据库尚无已发布文章，首页为空是正常现象。接着完成下面的首次内容导入。
 
-## 前台页面
+### 完全停止并重新启动
 
-| 路径 | 页面 | 说明 |
-|------|------|------|
-| `/` | 首页 | 最新文章列表（The Verge 风格） |
-| `/article/[slug]` | 文章详情 | 正文 + AI 摘要 + Key Takeaways + 相关文章（Medium 风格） |
-| `/category/[slug]` | 分类页 | 按分类筛选文章，支持分页 |
-| `/tag/[slug]` | 标签页 | 按标签筛选文章 |
-| `/search` | 搜索 | 全文搜索（标题、摘要、正文、标签） |
-| `/newsletter` | Newsletter | 订阅页面 |
-| `/sign-in` | 登录 | Clerk 登录组件 |
-| `/sign-up` | 注册 | Clerk 注册组件 |
-| `/dashboard` | 用户面板 | 显示当前用户信息和角色 |
-| `/sitemap.xml` | Sitemap | 动态生成，包含所有已发布文章、分类、标签 |
-| `/robots.txt` | Robots | 搜索引擎爬虫规则 |
+在运行 `npm run dev` 的 PowerShell 窗口按 `Ctrl + C`。然后确认 3000 端口是否仍被占用：
 
----
-
-## 后台管理 (`/admin`)
-
-需要用 `ADMIN_EMAILS` 中的邮箱登录才能访问。
-
-| 路径 | 功能 |
-|------|------|
-| `/admin` | 总览仪表盘（已发布/草稿/拒绝文章数、来源数、失败数、订阅数） |
-| `/admin/articles` | 文章管理（按状态筛选、修改状态、编辑 SEO 字段） |
-| `/admin/articles/[id]` | 文章编辑（标题、摘要、SEO Title、Meta Description、正文） |
-| `/admin/sources` | 来源管理（添加 RSS / 新闻网站、启用/禁用） |
-| `/admin/categories` | 分类管理（添加/编辑分类名和描述） |
-| `/admin/tags` | 标签管理（查看所有标签及文章数） |
-| `/admin/newsletter` | Newsletter 管理（查看订阅者、手动添加） |
-| `/admin/failures` | 失败日志（查看采集/AI处理失败记录、标记已解决） |
-
----
-
-## 后端 API
-
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/webhooks/clerk` | POST | Clerk 用户同步 Webhook（自动创建/更新用户） |
-| `/api/cron/ingest-rss` | POST | 采集所有活跃 RSS 源（需 `Authorization: Bearer CRON_SECRET`） |
-| `/api/cron/generate-seo-metadata` | POST | 批量生成 SEO 元数据（需 `Authorization: Bearer CRON_SECRET`） |
-
----
-
-## 定时任务
-
-### 手动触发
-
-```bash
-# 采集所有 RSS 源
-npm run ingest
-
-# 生成 SEO 元数据
-npm run seo
+```powershell
+netstat -ano | Select-String ':3000'
 ```
 
-### Windows 定时任务
+没有输出表示服务已经停止。如果仍看到 `LISTENING`，记录该行最后一列的 PID，并停止该进程：
 
-1. 打开"任务计划程序"
-2. 创建基本任务
-3. 触发器：每天每 30 分钟
-4. 操作：启动程序
-   - 程序：`node`
-   - 参数：`scripts/ingest-rss.cjs`
-   - 起始于：项目根目录
-
-### Linux/Mac cron
-
-```bash
-# 每 30 分钟采集一次
-*/30 * * * * cd /path/to/project && node scripts/ingest-rss.cjs
-
-# 每天凌晨 2 点生成 SEO 元数据
-0 2 * * * cd /path/to/project && node scripts/generate-seo.cjs
+```powershell
+Stop-Process -Id <PID> -Force
 ```
 
----
+重新生成 Prisma Client 并启动：
 
-## 数据库表结构
-
-| 表名 | 说明 |
-|------|------|
-| `users` | 用户（Clerk 同步，角色：USER / EDITOR / ADMIN） |
-| `sources` | 内容来源（RSS / 新闻网站 / 博客 / 研究网站） |
-| `categories` | 文章分类 |
-| `authors` | 文章作者 |
-| `articles` | 文章（状态：DRAFT / PUBLISHED / ARCHIVED / REJECTED） |
-| `ai_summaries` | AI 摘要（摘要、Key Takeaways、SEO Title、Meta Description） |
-| `tags` | 标签 |
-| `article_tags` | 文章-标签关联 |
-| `newsletter_subscribers` | Newsletter 订阅者 |
-| `article_analytics` | 文章统计（浏览、点击、分享） |
-| `ingestion_failures` | 采集失败日志 |
-
----
-
-## 常用命令
-
-```bash
-npm run dev              # 启动开发服务器
-npm run build            # 生产构建
-npm run start            # 启动生产服务器
-npm run typecheck        # TypeScript 类型检查
-npm run prisma:generate  # 生成 Prisma Client
-npm run prisma:migrate   # 运行数据库迁移
-npm run ingest           # 手动采集 RSS
-npm run seo              # 手动生成 SEO 元数据
+```powershell
+Set-Location 'E:\you-are-a-senior-saas-architect'
+npm run prisma:generate
+npm run dev
 ```
 
----
+最后验证首页：
 
-## 项目结构
-
-```
-├── app/                          # Next.js App Router
-│   ├── page.tsx                  # 首页（The Verge 风格）
-│   ├── layout.tsx                # 根布局
-│   ├── client-layout.tsx         # Clerk 客户端布局 + 导航栏（Linear 风格）
-│   ├── globals.css               # 全局样式 + 设计系统
-│   ├── sitemap.ts                # 动态 Sitemap
-│   ├── robots.ts                 # Robots.txt
-│   ├── article/[slug]/           # 文章详情（Medium 风格）
-│   ├── category/[slug]/          # 分类页
-│   ├── tag/[slug]/               # 标签页
-│   ├── search/                   # 搜索页
-│   ├── newsletter/               # Newsletter 订阅
-│   ├── sign-in/                  # 登录
-│   ├── sign-up/                  # 注册
-│   ├── dashboard/                # 用户面板
-│   ├── admin/                    # 后台管理
-│   │   ├── articles/             # 文章管理
-│   │   ├── sources/              # 来源管理
-│   │   ├── categories/           # 分类管理
-│   │   ├── tags/                 # 标签管理
-│   │   ├── newsletter/           # Newsletter 管理
-│   │   └── failures/             # 失败日志
-│   └── api/
-│       ├── webhooks/clerk/       # Clerk Webhook
-│       └── cron/                 # 定时任务
-├── src/
-│   ├── lib/                      # 数据访问层
-│   │   ├── prisma.ts             # Prisma Client 单例
-│   │   ├── auth.ts               # 认证工具（Clerk + 角色判断）
-│   │   ├── admin.ts              # 后台数据查询和操作
-│   │   ├── articles.ts           # 文章查询
-│   │   ├── categories.ts         # 分类查询
-│   │   ├── seo.ts                # SEO 元数据构建
-│   │   ├── sitemap.ts            # Sitemap 数据查询
-│   │   └── utils.ts              # cn() 工具函数
-│   ├── services/                 # 业务逻辑层
-│   │   ├── rssIngestionService.ts      # RSS 采集服务
-│   │   ├── articleSummarizationService.ts  # AI 摘要服务（支持 Mimo）
-│   │   └── articleSeoMetadataService.ts    # SEO 元数据回填
-│   └── utils/
-│       └── content.ts            # 工具函数（slugify、hash、truncate）
-├── prisma/
-│   ├── schema.prisma             # 数据库 Schema
-│   └── migrations/               # 数据库迁移
-├── scripts/                      # 工具脚本
-├── .env.example                  # 环境变量示例
-├── middleware.ts                  # Clerk 认证中间件
-├── next.config.ts                # Next.js 配置
-├── tailwind.config.ts            # Tailwind 配置 + 设计系统
-├── DESIGN_SYSTEM.md              # 设计系统文档
-└── package.json
+```powershell
+$response = Invoke-WebRequest -UseBasicParsing http://localhost:3000/ -TimeoutSec 30
+$response.StatusCode
 ```
 
----
+输出 `200` 表示网站能够响应。
 
-## 设计系统
+### 常见启动错误
 
-参考：
-- **首页**: The Verge — 大 hero + 编辑网格
-- **文章页**: Medium — 窄 prose + 专注阅读
-- **导航**: Linear — 极简深色导航
-- **组件**: shadcn/ui
-- **动画**: Framer Motion
+| 错误 | 原因 | 处理 |
+| --- | --- | --- |
+| `@prisma/client did not initialize yet` | Prisma Client 尚未生成，或服务仍缓存旧客户端 | 停止开发服务器，执行 `npm run prisma:generate`，再执行 `npm run dev` |
+| `EPERM ... query_engine-windows.dll.node` | 开发服务器占用 Prisma 引擎文件 | 先用 `Ctrl + C` 或 `Stop-Process` 完全停止占用 3000 端口的进程，再生成客户端 |
+| `Can't reach database server ...:6543` | Supabase 项目暂停、连接串失效或数据库仍在恢复 | 按下一节恢复 Supabase，运行连接测试后重启网站 |
+| `安全包中没有可用的凭证` | Windows 受限进程无法取得 TLS 凭据 | 在普通 Windows PowerShell 中启动网站 |
 
-详细设计规范见 [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)
+## Supabase 暂停与数据库连接故障
 
----
+出现下面任一错误时，Prisma Client 通常已经生成，但应用连不上 Supabase：
 
-## 工作流程
+```text
+Can't reach database server at aws-1-ap-southeast-2.pooler.supabase.com:6543
+Invalid prisma.article.findMany() invocation
+```
 
-1. **内容采集**: `RssIngestionService` 解析 RSS Feed，提取文章内容和图片，去重后存入数据库
-2. **AI 处理**: `ArticleSummarizationService` 调用 Xiaomi Mimo API 生成摘要、Key Takeaways、分类、标签、SEO 元数据
-3. **人工审核**: 管理员在 `/admin/articles` 审核文章，可修改状态（发布/拒绝/归档）
-4. **SEO 优化**: 动态 Sitemap、JSON-LD 结构化数据、Open Graph 标签
-5. **Newsletter**: 用户订阅后可接收每日资讯推送
+按以下顺序处理：
 
----
+1. 登录 [Supabase Dashboard](https://supabase.com/dashboard)，进入当前项目。
+2. 如果页面显示 `Project is paused`，点击 `Resume project` 并确认恢复。
+3. 等待状态从 `Restoration in progress` 或 `Coming up...` 变为正常运行。恢复通常需要几分钟。
+4. 从项目的 `Connect` 页面重新复制连接串，不要手写主机名、用户名或端口。
+5. 将 Transaction Pooler（端口 6543）填写到 `DATABASE_URL`，并保留 `pgbouncer=true`。
+6. 将 Session Pooler（端口 5432）填写到 `DIRECT_URL`。
+7. 保存 `.env`，运行连接测试：
 
-## 环境变量说明
+```powershell
+npx tsx scripts/test-supabase.ts
+```
 
-| 变量 | 必需 | 说明 |
-|------|------|------|
-| `DATABASE_URL` | ✅ | Supabase 连接池 URL |
-| `DIRECT_URL` | ✅ | Supabase 直连 URL（用于迁移） |
-| `AI_API_KEY` | ✅ | Xiaomi Mimo API Key |
-| `AI_API_BASE_URL` | ✅ | Mimo API 地址 |
-| `AI_MODEL` | ✅ | Mimo 模型名称 |
-| `NEXT_PUBLIC_SITE_URL` | ✅ | 网站 URL |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ⚠️ | Clerk 公钥（可选） |
-| `CLERK_SECRET_KEY` | ⚠️ | Clerk 密钥（可选） |
-| `CLERK_WEBHOOK_SECRET` | ⚠️ | Clerk Webhook 签名（可选） |
-| `ADMIN_EMAILS` | ⚠️ | 管理员邮箱（可选） |
-| `CRON_SECRET` | ⚠️ | Cron 接口密钥（可选） |
+看到 `Supabase OK: [ { test: 1 } ]` 表示数据库可用。随后按上面的“完全停止并重新启动”流程重启网站。
 
----
+若端口能够连接但测试仍失败，回到 Supabase 的 `Connect` 页面核对项目地址和密码。密码含有 `@`、`#`、`%` 等字符时必须正确进行 URL 编码。不要把完整连接串或数据库密码提交到 Git、截图或聊天中。
 
-## 部署
+## 登录后台
 
-### Vercel 部署
+线上登录流程：
 
-1. Fork 或克隆仓库
-2. 在 Vercel 导入项目
-3. 配置环境变量
-4. 部署
+1. 打开 [https://sports-tech-intelligence.vercel.app/sign-in](https://sports-tech-intelligence.vercel.app/sign-in)。
+2. 使用其主邮箱已列入生产环境 `ADMIN_EMAILS` 的 Clerk 账号登录；多个管理员邮箱用逗号分隔。
+3. 登录成功后进入 `/dashboard`，确认页面显示角色为 `ADMIN`。
+4. 点击 `Admin Console`，或再打开 `/admin`。
 
-### 自定义域名
+本地登录使用 [http://localhost:3000/sign-in](http://localhost:3000/sign-in)，规则相同。没有 ADMIN 权限的已登录用户会留在 `/dashboard`，无法进入后台。当前实现会给白名单邮箱授予 ADMIN，但从 `ADMIN_EMAILS` 移除邮箱后不会自动撤销数据库中已有的 ADMIN 角色，这是待修复项。
 
-1. 在 Vercel 项目设置 → Domains
-2. 添加自定义域名
-3. 配置 DNS 记录
+## 后台运行与发布流程
 
----
+1. **添加来源**：进入 `/admin/sources`，填写名称、RSS URL 等并启用。首次建议只启用少量来源，方便核对采集结果。
+2. **采集内容**：保持开发服务器运行，在另一个 PowerShell 窗口进入项目目录并执行下面的采集命令。
+3. **检查结果**：查看终端中的新增、重复、失败计数，以及 `/admin/failures`。标记日志已解决只是更新状态，不会自动重试。
+4. **人工审核**：在 `/admin/articles` 筛选 DRAFT，检查原文、标题、正文、图片与摘要；编辑后将状态改为 PUBLISHED。
+5. **确认展示**：打开首页、文章页、分类和搜索，确认刚发布的文章可被找到。
+6. **日常维护**：定期处理草稿和失败日志，停用失效来源，需要时补充 SEO 元数据。
 
-## 注意事项
+### 后台操作对应的前端反馈
 
-- Clerk 认证是可选的，未配置时自动禁用登录功能
-- 所有页面都是动态渲染（`force-dynamic`），不使用静态生成
-- `.env` 文件不要提交到 Git
-- Supabase 的 `DIRECT_URL` 用于数据库迁移，`DATABASE_URL` 用于应用连接
-- AI 功能使用 Xiaomi Mimo API，兼容 OpenAI 格式
+| 后台操作 | 前端预期结果 |
+| --- | --- |
+| 将文章改为 `PUBLISHED` | 文章可出现在首页、文章详情、分类、标签和搜索结果中 |
+| 将文章改为 `DRAFT`、`REJECTED` 或 `ARCHIVED` | 文章不再进入公开文章列表 |
+| 编辑标题、摘要、正文或 SEO 字段 | 文章详情页及相应搜索引擎元数据更新 |
+| 新增并启用 RSS 来源 | 下次采集时读取该来源；不会立即自动出现公开文章 |
+| 停用来源 | 后续批次不再从该来源采集，已有文章不受影响 |
+| 标记失败记录为已解决 | 只更新失败日志状态，不会自动重试采集 |
+| 新增 Newsletter 订阅者 | 后台订阅者列表更新；当前版本不会自动发送邮件 |
 
----
+每次发布后至少检查首页、对应文章页、分类页和搜索结果。若后台保存成功但前端未显示，先确认文章状态为 `PUBLISHED`，再检查数据库连接和服务器日志。
+
+加载 `.env` 并触发采集：
+
+```powershell
+node --env-file=.env scripts/ingest-rss.cjs
+```
+
+为缺少元数据的文章执行 SEO 回填，每次 25 篇：
+
+```powershell
+node --env-file=.env scripts/generate-seo.cjs 25
+```
+
+这些脚本通过 HTTP POST 调用 `NEXT_PUBLIC_SITE_URL`，所以目标网站必须已启动。它们会修改目标网站所连接的数据库；首次本地试用应将地址设为 `http://localhost:3000` 并使用开发数据库。采集和 SEO 回填会调用 AI 服务。
+
+可选：批量导入仓库内预设来源与分类：
+
+```powershell
+node --env-file=.env --import tsx scripts/seed-sports-tech-sources.ts
+```
+
+预设脚本会启用新增来源，跳过已有且具备 RSS URL 的来源；列表中的 Feed 地址未在此次逐一验证。导入后应在后台筛选需要启用的来源。
+
+`npm run ingest`、`npm run seo`、`npm run seed:sources` 也有对应脚本，但没有显式的 `.env` 加载参数。为避免独立脚本漏读网站地址或密钥，首次使用优先采用上面的显式加载命令。
+
+## 页面与接口
+
+| 路径 | 用途 |
+| --- | --- |
+| `/` | 最新已发布文章 |
+| `/article/[slug]` | 文章详情与 AI 摘要 |
+| `/category`、`/category/[slug]` | 分类目录、分类文章 |
+| `/tag/[slug]` | 标签文章 |
+| `/search?q=关键词` | 关键词搜索 |
+| `/newsletter` | 登记订阅邮箱，暂不自动发送邮件 |
+| `/privacy` | 隐私说明 |
+| `/sign-in`、`/sign-up`、`/dashboard` | 登录、注册、账号面板 |
+| `/admin` | 管理总览 |
+| `/admin/articles`、`/admin/articles/[id]` | 文章列表与编辑 |
+| `/admin/sources`、`/admin/categories`、`/admin/tags` | 来源、分类、标签管理 |
+| `/admin/newsletter`、`/admin/failures` | 订阅者、失败记录 |
+| `/sitemap.xml`、`/robots.txt`、`/feed.xml` | 搜索引擎与 RSS 阅读器入口 |
+
+| 接口 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/cron/ingest-rss` | GET / POST | 采集启用来源，生成草稿 |
+| `/api/cron/generate-seo-metadata?batchSize=25` | GET / POST | SEO 回填，可传 `overwrite=true` 覆盖已有数据 |
+| `/api/webhooks/clerk` | POST | Clerk 用户事件同步，校验 Webhook 签名 |
+
+Cron 请求必须携带 `Authorization: Bearer <CRON_SECRET>`。未配置 `CRON_SECRET` 时接口返回 503，密钥不匹配时返回 401。Vercel Cron 和上面的 Node 脚本都会使用环境变量构造该请求头。
+
+## 定时运行与部署
+
+`vercel.json` 当前安排 RSS 每 6 小时执行一次，SEO 在对应半小时后执行，时区为 UTC。
+
+两个 Cron 路由同时支持 GET 和 POST。Vercel Cron 使用 GET，手动脚本使用 POST，二者共用相同的 `CRON_SECRET` 校验和任务逻辑。[Vercel Cron 官方说明](https://vercel.com/docs/cron-jobs)
+
+部署后仍需在 Vercel 的 Settings → Cron Jobs 和 Logs 中确认任务实际触发成功。Vercel Hobby 计划只允许每个 Cron Job 每天运行一次；如果生产项目使用 Hobby 计划，需要将 `vercel.json` 的频率调整为每天一次，或升级计划。
+
+修复前可手动运行上述脚本。若用 Windows 任务计划程序，填写 Node 可执行文件完整路径、参数 `--env-file=.env scripts/ingest-rss.cjs`，起始目录填写项目绝对路径；目标网站必须可访问。机器上的 Node 路径可用 `(Get-Command node).Source` 查看。
+
+部署准备流程：
+
+1. 在 Vercel 导入 GitHub 仓库，填写生产环境变量和正式网站地址。
+2. 通过受控发布流程对目标数据库执行 `npx prisma migrate deploy`。
+3. 构建时运行 `npm run prisma:generate` 和 `npm run build`。
+4. 配置生产 Clerk 应用；如需 Webhook，同步地址为正式域名下的 `/api/webhooks/clerk`。
+5. 完成下面 P0 项目后，验证登录、来源管理、采集、审核发布及定时任务日志。
+
+### 线上运行检查
+
+Vercel 页面正常但 Supabase 暂停时，网站仍可能返回页面外壳，同时数据库查询报错。因此需要分别检查应用和数据库：
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://sports-tech-intelligence.vercel.app/ -TimeoutSec 30 | Select-Object StatusCode
+
+npx tsx scripts/test-supabase.ts
+```
+
+第一条应返回 `200`，第二条应显示 `Supabase OK`。线上登录页为 `/sign-in`；未登录访问受保护路由目前可能看到 404。
+
+## 常用开发命令
+
+```powershell
+npm run dev
+npm run typecheck
+npm run build
+npm run start
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+`npm run start` 需要先成功构建。仓库当前没有专门的 lint、test、format 或 CI 脚本。
+
+## 目录结构
+
+```text
+app/                 页面、管理后台、API 路由
+src/lib/             Prisma、认证、数据查询、后台操作、SEO
+src/services/        RSS 采集、AI 摘要、SEO 回填
+src/utils/content.ts 内容清洗、URL 处理、slug 与哈希工具
+prisma/              数据模型及迁移
+scripts/             采集入口、来源初始化、诊断与回填工具
+.env.example         环境变量模板
+vercel.json          定时任务配置
+DESIGN_SYSTEM.md     设计规范
+```
+
+## 已知限制与下一步计划
+
+以下为基于本地源码的建议计划，尚未实施，不代表线上已完成验证。
+
+| 优先级 | 工作 | 验收标准 |
+| --- | --- | --- |
+| P0：运行可靠性 | 确认生产计划支持当前 Cron 频率；让脚本在失败时返回非零退出码；增加并发保护与 Supabase 暂停告警 | 定时触发有成功记录；调度器能识别失败；重复触发不会重复处理；数据库离线时收到告警 |
+| P0：后台权限与登录 | 在每个后台写入 Server Action 内校验管理员；补齐 Clerk 缺配置行为、管理员撤权和未登录跳转逻辑 | 普通用户直接调用写入操作被拒绝；撤权后不再保留 ADMIN；未登录访问后台跳转到 `/sign-in` |
+| P0：发布分支 | 确认 Vercel 生产分支并统一 `main`、`master` | GitHub 默认分支、Vercel Production Branch 和实际发布提交一致 |
+| P1：采集质量 | 核验预设来源、收紧体育科技相关性筛选、拆分批次与重试；修复 AI 失败后的重处理路径 | 同一文章不重复入库；摘要失败可恢复；每批耗时、失败原因可追踪 |
+| P1：发布闭环 | 增加后台采集/重试入口、预览、批量审核及分页；覆盖关键路径的自动检查 | 管理员能从添加来源到文章发布完成整套操作，且发布后能搜索到文章 |
+| P2：Newsletter | 实现订阅确认、退订、摘要邮件、投递日志及失败处理 | 测试邮箱收到一期摘要，退订后不再收到邮件 |
+| P2：维护与度量 | 增加 CI、任务健康指标、AI 用量统计；统一认证和 AI 接口文档 | 类型检查与构建进入发布检查；可查看任务成功率和调用量；文档与实现一致 |
+
+已识别的源码依据：`src/lib/admin.ts` 的后台写入函数缺少函数内管理员校验；`src/lib/auth.ts` 目前会授予 ADMIN，但移除白名单邮箱时不会主动降权；Newsletter 订阅操作目前只写数据库；RSS 来源及条目顺序处理，失败重试和批次恢复仍需完善。
+
+建议执行顺序：**先完成 P0，再用少量来源跑通采集 → 审核 → 发布，之后扩大来源并实现邮件发送。**
 
 ## 许可证
 
 Private - All Rights Reserved
- 
- 

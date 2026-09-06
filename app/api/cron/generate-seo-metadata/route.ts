@@ -3,14 +3,24 @@ import { ArticleSeoMetadataService } from "../../../../src/services/articleSeoMe
 
 export const dynamic = "force-dynamic";
 
+export async function GET(request: Request) {
+  return generateSeoMetadata(request);
+}
+
 export async function POST(request: Request) {
+  return generateSeoMetadata(request);
+}
+
+async function generateSeoMetadata(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 503 });
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const url = new URL(request.url);

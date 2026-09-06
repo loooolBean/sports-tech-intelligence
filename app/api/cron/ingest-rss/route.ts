@@ -5,14 +5,24 @@ import { RssIngestionService } from "../../../../src/services/rssIngestionServic
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+export async function GET(request: Request) {
+  return ingestRss(request);
+}
+
 export async function POST(request: Request) {
+  return ingestRss(request);
+}
+
+async function ingestRss(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 503 });
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const sources = await prisma.source.findMany({

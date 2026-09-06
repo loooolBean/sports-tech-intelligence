@@ -98,7 +98,7 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 | `ADMIN_EMAILS` | 管理员邮箱，多个用逗号分隔；需与登录账号主邮箱一致 |
 | `CRON_SECRET` | 采集与 SEO 接口的共享密钥，本地调用与服务端保持一致 |
 
-不要提交 `.env` 或真实密钥。当前 Cron 接口在未设置 `CRON_SECRET` 时会跳过鉴权，部署时必须配置。
+不要提交 `.env` 或真实密钥。Cron 接口在未设置 `CRON_SECRET` 时返回 503；部署前必须配置该变量。
 
 **Clerk 的现有限制：** 前端会根据公钥决定是否显示认证组件，但 `middleware.ts` 仍无条件启用 Clerk，服务端认证也没有完整禁用分支。因此不要把“不配置 Clerk”当作已验证可用的运行模式；要使用后台，请配置有效的 Clerk 密钥和管理员邮箱。
 
@@ -276,13 +276,13 @@ Cron 请求必须携带 `Authorization: Bearer <CRON_SECRET>`。未配置 `CRON_
 
 ## 定时运行与部署
 
-`vercel.json` 当前安排 RSS 每 6 小时执行一次，SEO 在对应半小时后执行，时区为 UTC。
+`vercel.json` 当前按 Vercel Hobby 套餐限制安排为每天执行一次：RSS 在 UTC 00:00（北京时间 08:00）执行，SEO 在 UTC 01:30（北京时间 09:30）执行。
 
 两个 Cron 路由同时支持 GET 和 POST。Vercel Cron 使用 GET，手动脚本使用 POST，二者共用相同的 `CRON_SECRET` 校验和任务逻辑。[Vercel Cron 官方说明](https://vercel.com/docs/cron-jobs)
 
-部署后仍需在 Vercel 的 Settings → Cron Jobs 和 Logs 中确认任务实际触发成功。Vercel Hobby 计划只允许每个 Cron Job 每天运行一次；如果生产项目使用 Hobby 计划，需要将 `vercel.json` 的频率调整为每天一次，或升级计划。
+部署后仍需在 Vercel 的 Settings → Cron Jobs 和 Logs 中确认任务实际触发成功。若升级到付费计划并需要更及时的内容，可以再提高执行频率。
 
-修复前可手动运行上述脚本。若用 Windows 任务计划程序，填写 Node 可执行文件完整路径、参数 `--env-file=.env scripts/ingest-rss.cjs`，起始目录填写项目绝对路径；目标网站必须可访问。机器上的 Node 路径可用 `(Get-Command node).Source` 查看。
+需要立即采集时也可手动运行上述脚本。若用 Windows 任务计划程序，填写 Node 可执行文件完整路径、参数 `--env-file=.env scripts/ingest-rss.cjs`，起始目录填写项目绝对路径；目标网站必须可访问。机器上的 Node 路径可用 `(Get-Command node).Source` 查看。
 
 部署准备流程：
 
@@ -337,7 +337,7 @@ DESIGN_SYSTEM.md     设计规范
 
 | 优先级 | 工作 | 验收标准 |
 | --- | --- | --- |
-| P0：运行可靠性 | 确认生产计划支持当前 Cron 频率；让脚本在失败时返回非零退出码；增加并发保护与 Supabase 暂停告警 | 定时触发有成功记录；调度器能识别失败；重复触发不会重复处理；数据库离线时收到告警 |
+| P0：运行可靠性 | 确认每日 Cron 有成功记录；让脚本在失败时返回非零退出码；增加并发保护与 Supabase 暂停告警 | 调度器能识别失败；重复触发不会重复处理；数据库离线时收到告警 |
 | P0：后台权限与登录 | 在每个后台写入 Server Action 内校验管理员；补齐 Clerk 缺配置行为、管理员撤权和未登录跳转逻辑 | 普通用户直接调用写入操作被拒绝；撤权后不再保留 ADMIN；未登录访问后台跳转到 `/sign-in` |
 | P0：发布分支 | 确认 Vercel 生产分支并统一 `main`、`master` | GitHub 默认分支、Vercel Production Branch 和实际发布提交一致 |
 | P1：采集质量 | 核验预设来源、收紧体育科技相关性筛选、拆分批次与重试；修复 AI 失败后的重处理路径 | 同一文章不重复入库；摘要失败可恢复；每批耗时、失败原因可追踪 |

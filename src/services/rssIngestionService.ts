@@ -17,6 +17,7 @@ export interface IngestRssSourceInput {
   rssUrl: string;
   defaultCategorySlug?: string;
   autoPublish?: boolean;
+  maxItems?: number;
 }
 
 export interface IngestionResult {
@@ -28,7 +29,7 @@ export interface IngestionResult {
 }
 
 export class RssIngestionService {
-  private readonly parser = new Parser<unknown, FeedItem>();
+  private readonly parser = new Parser<unknown, FeedItem>({ timeout: 15_000 });
   private static readonly RELEVANCE_KEYWORDS = [
     "athlete", "athletes", "sports", "sport", "training", "wearable", "wearables",
     "gps", "performance", "coaching", "fitness", "recovery", "analytics",
@@ -59,9 +60,10 @@ export class RssIngestionService {
 
     try {
       const feed = await this.parser.parseURL(input.rssUrl);
-      result.fetched = feed.items.length;
+      const items = input.maxItems ? feed.items.slice(0, input.maxItems) : feed.items;
+      result.fetched = items.length;
 
-      for (const item of feed.items) {
+      for (const item of items) {
         try {
           const created = await this.ingestItem(input, item);
           if (created) result.created += 1;
@@ -89,6 +91,10 @@ export class RssIngestionService {
         url: input.rssUrl,
         stage: "rss_fetch",
         error,
+      });
+      await this.db.source.update({
+        where: { id: input.sourceId },
+        data: { lastFetchedAt: new Date() },
       });
     }
 
@@ -286,6 +292,7 @@ export class RssIngestionService {
       headers: {
         "User-Agent": "SportsTechIntelligenceBot/1.0",
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {

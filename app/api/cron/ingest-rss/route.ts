@@ -25,11 +25,17 @@ async function ingestRss(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const sourceLimit = clampPositiveInteger(url.searchParams.get("sourceLimit"), 3, 10);
+  const itemsPerSource = clampPositiveInteger(url.searchParams.get("itemsPerSource"), 2, 10);
+
   const sources = await prisma.source.findMany({
     where: {
       isActive: true,
       rssUrl: { not: null },
     },
+    orderBy: { lastFetchedAt: "asc" },
+    take: sourceLimit,
   });
 
   if (sources.length === 0) {
@@ -46,6 +52,7 @@ async function ingestRss(request: Request) {
         rssUrl: source.rssUrl!,
         defaultCategorySlug: "uncategorized",
         autoPublish: false,
+        maxItems: itemsPerSource,
       });
       results.push({ source: source.name, ...result });
     } catch (error) {
@@ -58,6 +65,15 @@ async function ingestRss(request: Request) {
 
   return NextResponse.json({
     message: `Ingested ${sources.length} sources`,
+    sourceLimit,
+    itemsPerSource,
     results,
   });
+}
+
+function clampPositiveInteger(value: string | null, fallback: number, maximum: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, maximum);
 }

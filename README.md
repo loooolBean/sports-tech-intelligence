@@ -268,7 +268,7 @@ node --env-file=.env --import tsx scripts/seed-sports-tech-sources.ts
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
-| `/api/cron/ingest-rss` | GET / POST | 采集启用来源，生成草稿 |
+| `/api/cron/ingest-rss` | GET / POST | 采集最久未检查的来源，生成草稿；默认每次 3 个来源、每个最多 2 篇，可传 `sourceLimit` 和 `itemsPerSource`（上限均为 10） |
 | `/api/cron/generate-seo-metadata?batchSize=25` | GET / POST | SEO 回填，可传 `overwrite=true` 覆盖已有数据 |
 | `/api/webhooks/clerk` | POST | Clerk 用户事件同步，校验 Webhook 签名 |
 
@@ -276,7 +276,7 @@ Cron 请求必须携带 `Authorization: Bearer <CRON_SECRET>`。未配置 `CRON_
 
 ## 定时运行与部署
 
-`vercel.json` 当前按 Vercel Hobby 套餐限制安排为每天执行一次：RSS 在 UTC 00:00（北京时间 08:00）执行，SEO 在 UTC 01:30（北京时间 09:30）执行。
+`vercel.json` 当前按 Vercel Hobby 套餐限制安排为每天执行一次：RSS 在 UTC 00:00（北京时间 08:00）执行，SEO 在 UTC 01:30（北京时间 09:30）执行。RSS 每次处理最久未检查的 3 个来源并自动轮换，避免单次处理全部来源导致 Vercel 函数超时。
 
 两个 Cron 路由同时支持 GET 和 POST。Vercel Cron 使用 GET，手动脚本使用 POST，二者共用相同的 `CRON_SECRET` 校验和任务逻辑。[Vercel Cron 官方说明](https://vercel.com/docs/cron-jobs)
 

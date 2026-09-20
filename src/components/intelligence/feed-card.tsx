@@ -114,5 +114,6 @@ function ArticleMeta({ article, compact = false }: { article: FeedArticle; compa
 }
 
 function getSummary(article: FeedArticle): string {
-  return article.aiSummary?.summary ?? article.excerpt ?? "Read the full report for details.";
+  const summary = article.aiSummary?.summary ?? article.excerpt ?? "Read the full report for details.";
+  return summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
 }

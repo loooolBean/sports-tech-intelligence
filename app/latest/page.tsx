@@ -26,7 +26,7 @@ export default async function LatestPage({ searchParams }: LatestPageProps) {
   const category = params.category ? getIntelligenceCategory(params.category) : null;
   const activeCategory = category?.slug === "other" ? undefined : category?.slug;
   const period = parseIntelligencePeriod(params.period);
-  const articles = await getLatestIntelligence({ category: activeCategory, period, take: 60 });
+  const articles = await getLatestIntelligence({ category: activeCategory, period, take: 30 });
   const groups = groupByDate(articles);
 
   return (

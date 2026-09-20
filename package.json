@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/commercial.test.ts tests/intelligence-feed.test.ts tests/images.test.ts",

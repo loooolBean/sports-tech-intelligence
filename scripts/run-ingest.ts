@@ -21,7 +21,7 @@ async function main() {
         sourceId: source.id,
         rssUrl: source.rssUrl!,
         defaultCategorySlug: "uncategorized",
-        autoPublish: false,
+        autoPublish: true,
       });
       console.log(`  ${result.created > 0 ? "+" : "·"} ${source.name}: fetched=${result.fetched} created=${result.created} dupes=${result.duplicates} failed=${result.failed}`);
       totalCreated += result.created;

@@ -1,127 +1,35 @@
-import Link from "next/link";
-import Image from "next/image";
-import { getSearchResults } from "../../src/lib/admin";
+import { EvidenceSourceType, ResearchStudyType } from "@prisma/client";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import { CompanyCard, ProductCard } from "@/src/components/intelligence/cards";
+import { SearchForm } from "@/src/components/intelligence/search-form";
+import { ProBadge } from "@/src/components/pro/pro-gate";
+import { ResearchCard } from "@/src/components/research/research-card";
+import { getCurrentUserProfile } from "@/src/lib/auth";
+import { getUserEntitlements } from "@/src/lib/entitlements";
+import { getExploreFilters, searchIntelligence } from "@/src/lib/intelligence";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Search Sports Technology Intelligence",
-  robots: {
-    index: false,
-    follow: true,
-  },
-};
+export const metadata = { title: "Search Sports Technology Intelligence", description: "Search sports technology companies, products, research and intelligence.", robots: { index: false, follow: true } };
+type Params = { q?: string; type?: string; technology?: string; useCase?: string; sport?: string; evidenceSource?: string; studyType?: string; year?: string; peerReviewed?: string };
+type Props = { searchParams: Promise<Params> };
+const validTypes = ["all", "companies", "products", "research", "articles"] as const;
 
-type SearchPageProps = {
-  searchParams: Promise<{
-    q?: string;
-  }>;
-};
-
-export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q = "" } = await searchParams;
-  const results = await getSearchResults(q);
-
-  return (
-    <main className="min-h-screen bg-bg">
-      <section className="border-b border-border">
-        <div className="mx-auto max-w-content px-4 py-12 lg:px-8">
-          <h1 className="text-h1 text-text-primary">Search</h1>
-          <p className="mt-3 text-body-lg text-text-secondary">
-            Find articles on wearables, athlete monitoring, performance analytics, and more.
-          </p>
-
-          {/* Search Form */}
-          <form className="mt-8" method="get">
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  name="q"
-                  placeholder="Search HRV, GPS tracking, force plates..."
-                  defaultValue={q}
-                  className="w-full rounded-lg border border-border bg-bg-card px-4 py-3 text-body text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-lg bg-text-primary px-6 py-3 text-caption font-medium text-bg transition-colors hover:bg-text-secondary"
-              >
-                Search
-              </button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      {/* Results */}
-      <section className="mx-auto max-w-content px-4 py-12 lg:px-8">
-        {q && (
-          <p className="mb-6 text-caption text-text-tertiary">
-            {results.length} result{results.length !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;
-          </p>
-        )}
-
-        {results.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {results.map((article) => (
-              <Link
-                key={article.id}
-                href={`/article/${article.slug}`}
-                className="group card-surface overflow-hidden"
-              >
-                {/* Image */}
-                <div className="relative aspect-[16/10] bg-bg-elevated">
-                  {article.imageUrl ? (
-                    <Image
-                      src={article.imageUrl}
-                      alt={article.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-bg-elevated to-bg" />
-                  )}
-                </div>
-
-                <div className="p-5">
-                  <div className="flex items-center gap-2 text-caption text-text-tertiary">
-                    <span>{article.category.name}</span>
-                    <span>·</span>
-                    <span>{article.source.name}</span>
-                  </div>
-                  <h2 className="mt-2 text-h3 text-text-primary line-clamp-2 group-hover:text-accent transition-colors">
-                    {article.title}
-                  </h2>
-                  {article.excerpt && (
-                    <p className="mt-2 text-body text-text-secondary line-clamp-2">
-                      {article.excerpt}
-                    </p>
-                  )}
-                  <div className="mt-3 text-caption text-text-tertiary">
-                    <time dateTime={article.publishedAt.toISOString()}>
-                      {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
-                    </time>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : q ? (
-          <div className="rounded-lg border border-border p-8 text-center">
-            <p className="text-body-lg text-text-tertiary">
-              No articles found. Try a different search term.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border p-8 text-center">
-            <p className="text-body-lg text-text-tertiary">
-              Enter a search term to find articles.
-            </p>
-          </div>
-        )}
-      </section>
-    </main>
-  );
+export default async function SearchPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const type = validTypes.includes(params.type as (typeof validTypes)[number]) ? params.type as (typeof validTypes)[number] : "all";
+  const user = await getCurrentUserProfile();
+  const entitlements = await getUserEntitlements(user?.id);
+  const evidenceSource = entitlements.advancedFilters && Object.values(EvidenceSourceType).includes(params.evidenceSource as EvidenceSourceType) ? params.evidenceSource as EvidenceSourceType : undefined;
+  const studyType = entitlements.advancedFilters && Object.values(ResearchStudyType).includes(params.studyType as ResearchStudyType) ? params.studyType as ResearchStudyType : undefined;
+  const publicationYear = entitlements.advancedFilters && Number.isInteger(Number(params.year)) ? Number(params.year) : undefined;
+  const [results, filters] = await Promise.all([searchIntelligence({ query: params.q, type, technology: params.technology, useCase: params.useCase, sport: params.sport, evidenceSource, studyType, publicationYear, peerReviewed: entitlements.advancedFilters && params.peerReviewed === "true" ? true : undefined }), getExploreFilters()]);
+  const q = params.q ?? "";
+  const queryFor = (next: Partial<Params>) => { const query = new URLSearchParams(); Object.entries({ ...params, type: type === "all" ? undefined : type, ...next }).forEach(([key, item]) => { if (item) query.set(key, item); }); return `/search?${query}`; };
+  const hasSearch = Boolean(q || params.technology || params.useCase || params.sport || evidenceSource || studyType || publicationYear);
+  const noResults = !results.counts.companies && !results.counts.products && !results.counts.research && !results.counts.articles;
+  return <main className="min-h-screen bg-bg"><section className="border-b border-border"><div className="mx-auto max-w-content px-4 py-12 lg:px-8"><p className="overline">Discovery</p><h1 className="mt-2 text-h1 text-text-primary">Search sports technology</h1><p className="mt-3 max-w-2xl text-body-lg text-text-secondary">Find companies, products, structured research and industry intelligence.</p><div className="mt-7"><SearchForm query={q} /></div></div></section><section className="mx-auto max-w-content px-4 py-8 lg:px-8"><div className="flex flex-col gap-6 lg:flex-row"><aside className="lg:w-56 lg:flex-none"><form className="grid gap-4 rounded-lg border border-border p-4"><input type="hidden" name="q" value={q} /><input type="hidden" name="type" value={type} /><Select label="Technology" name="technology" value={params.technology} options={filters.technologies} /><Select label="Use case" name="useCase" value={params.useCase} options={filters.useCases} /><Select label="Sport" name="sport" value={params.sport} options={filters.sports} /><label className="grid gap-1 text-caption text-text-secondary"><span className="flex items-center gap-2">Evidence source {!entitlements.advancedFilters && <ProBadge />}</span><select name="evidenceSource" defaultValue={evidenceSource} disabled={!entitlements.advancedFilters} className="rounded-md border border-border bg-bg px-2 py-2 disabled:opacity-60"><option value="">All</option>{Object.values(EvidenceSourceType).map((item) => <option key={item}>{item.replaceAll("_", " ")}</option>)}</select></label><label className="grid gap-1 text-caption text-text-secondary"><span className="flex items-center gap-2">Study type {!entitlements.advancedFilters && <ProBadge />}</span><select name="studyType" defaultValue={studyType} disabled={!entitlements.advancedFilters} className="rounded-md border border-border bg-bg px-2 py-2 disabled:opacity-60"><option value="">All</option>{Object.values(ResearchStudyType).map((item) => <option key={item}>{item.replaceAll("_", " ")}</option>)}</select></label><label className="grid gap-1 text-caption text-text-secondary"><span className="flex items-center gap-2">Publication year {!entitlements.advancedFilters && <ProBadge />}</span><input name="year" type="number" defaultValue={publicationYear} disabled={!entitlements.advancedFilters} className="rounded-md border border-border bg-bg px-2 py-2 disabled:opacity-60" /></label><label className="flex items-center gap-2 text-caption text-text-secondary"><input type="checkbox" name="peerReviewed" value="true" defaultChecked={params.peerReviewed === "true"} disabled={!entitlements.advancedFilters} />Peer reviewed</label><button className="rounded-md bg-text-primary px-3 py-2 text-caption font-semibold text-bg">Apply filters</button>{!entitlements.advancedFilters && <Link href="/pricing" className="text-caption font-semibold text-accent">Unlock advanced filters →</Link>}</form></aside><div className="min-w-0 flex-1"><div className="flex flex-wrap gap-2 border-b border-border pb-5">{validTypes.map((item) => <Link key={item} href={queryFor({ type: item === "all" ? undefined : item })} className={`rounded-full px-3 py-1.5 text-caption font-semibold ${type === item ? "bg-text-primary text-bg" : "bg-bg-elevated text-text-secondary"}`}>{item === "articles" ? "Intelligence" : item[0].toUpperCase() + item.slice(1)}</Link>)}</div>{q && <p className="mt-6 text-body text-text-secondary">Search results for <span className="font-semibold text-text-primary">“{q}”</span></p>}{!hasSearch ? <Empty query="" /> : <div className="mt-7 space-y-12"><ResultSection title="Companies" href={queryFor({ type: "companies" })} hidden={type !== "all" && type !== "companies"}><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{results.companies.map((company) => <CompanyCard key={company.id} company={company} />)}</div></ResultSection><ResultSection title="Products" href={queryFor({ type: "products" })} hidden={type !== "all" && type !== "products"}><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{results.products.map((product) => <ProductCard key={product.id} product={product} />)}</div></ResultSection><ResultSection title="Research" href={queryFor({ type: "research" })} hidden={type !== "all" && type !== "research"}><div className="grid gap-5 md:grid-cols-2">{results.research.map((research) => <ResearchCard key={research.id} research={research} />)}</div></ResultSection><ResultSection title="Intelligence" href={queryFor({ type: "articles" })} hidden={type !== "all" && type !== "articles"}><div className="grid gap-4">{results.articles.map((article) => <Link key={article.id} href={`/article/${article.slug}`} className="group card-surface p-5"><div className="flex flex-wrap items-center gap-2 text-caption text-text-tertiary"><span>{article.companies[0]?.company.name ?? article.category.name}</span><span>·</span><span>{article.source.name}</span><span>·</span><time dateTime={article.publishedAt.toISOString()}>{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</time></div><h3 className="mt-2 text-h3 text-text-primary group-hover:text-accent">{article.title}</h3><p className="mt-2 line-clamp-2 text-body text-text-secondary">{article.excerpt ?? article.aiSummary?.summary}</p></Link>)}</div></ResultSection>{noResults && <Empty query={q} />}</div>}</div></div></section></main>;
 }
+function Select({ label, name, value, options }: { label: string; name: string; value?: string; options: { slug: string; name: string }[] }) { return <label className="grid gap-1 text-caption text-text-secondary">{label}<select name={name} defaultValue={value} className="rounded-md border border-border bg-bg px-2 py-2"><option value="">All</option>{options.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label>; }
+function ResultSection({ title, href, children, hidden }: { title: string; href: string; children: React.ReactNode; hidden: boolean }) { if (hidden) return null; return <section><div className="mb-4 flex items-center justify-between"><h2 className="text-h2 text-text-primary">{title}</h2><Link href={href} className="text-caption font-semibold text-accent">View all →</Link></div>{children}</section>; }
+function Empty({ query }: { query: string }) { return <div className="mt-7 rounded-lg border border-dashed border-border p-8 text-center"><h2 className="text-h3 text-text-primary">{query ? `No intelligence found for “${query}”` : "Search the intelligence database"}</h2><p className="mt-2 text-body text-text-secondary">Try another keyword or explore companies, products and research.</p><div className="mt-5 flex justify-center gap-3"><Link href="/companies" className="text-caption font-semibold text-accent">Companies</Link><Link href="/products" className="text-caption font-semibold text-accent">Products</Link><Link href="/research" className="text-caption font-semibold text-accent">Research</Link></div></div>; }

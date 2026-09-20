@@ -11,6 +11,15 @@ const articleInclude = {
       tag: true,
     },
   },
+  companies: {
+    include: { company: true },
+  },
+  products: {
+    include: { product: { include: { company: true } } },
+  },
+  technologies: {
+    include: { technology: true },
+  },
 } satisfies Prisma.ArticleInclude;
 
 export type ArticlePageData = Prisma.ArticleGetPayload<{
@@ -22,6 +31,7 @@ export async function getArticleBySlug(slug: string): Promise<ArticlePageData | 
     where: {
       slug,
       status: ArticleStatus.PUBLISHED,
+      duplicateOfId: null,
     },
     include: articleInclude,
   });
@@ -36,6 +46,8 @@ export async function getRelatedArticles(article: ArticlePageData): Promise<Arti
         not: article.id,
       },
       status: ArticleStatus.PUBLISHED,
+      duplicateOfId: null,
+      isHiddenFromFeed: false,
       OR: [
         {
           categoryId: article.categoryId,
@@ -59,4 +71,24 @@ export async function getRelatedArticles(article: ArticlePageData): Promise<Arti
     ],
     take: 3,
   });
+}
+
+export async function isArticleFromUserWatchlist(
+  userId: string,
+  article: ArticlePageData,
+): Promise<boolean> {
+  const companyIds = article.companies.map(({ companyId }) => companyId);
+  const productIds = article.products.map(({ productId }) => productId);
+  if (companyIds.length === 0 && productIds.length === 0) return false;
+
+  const [companyMatch, productMatch] = await Promise.all([
+    companyIds.length
+      ? prisma.watchedCompany.count({ where: { userId, companyId: { in: companyIds } } })
+      : 0,
+    productIds.length
+      ? prisma.watchedProduct.count({ where: { userId, productId: { in: productIds } } })
+      : 0,
+  ]);
+
+  return companyMatch + productMatch > 0;
 }

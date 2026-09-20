@@ -6,6 +6,11 @@ import {
   updateArticleStatus,
 } from "../../../../src/lib/admin";
 import { ArticleStatus } from "@prisma/client";
+import {
+  FALLBACK_INTELLIGENCE_CATEGORY,
+  getIntelligenceCategory,
+  INTELLIGENCE_CATEGORIES,
+} from "@/src/lib/intelligence-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +27,7 @@ export default async function AdminArticleEditPage({ params }: AdminArticleEditP
   if (!article) {
     notFound();
   }
+  const knownCategory = getIntelligenceCategory(article.category.slug);
 
   return (
     <div>
@@ -40,6 +46,62 @@ export default async function AdminArticleEditPage({ params }: AdminArticleEditP
           Excerpt
           <textarea className="min-h-24 rounded-md border border-border px-3 py-2" name="excerpt" defaultValue={article.excerpt ?? ""} />
         </label>
+        <label className="grid gap-2 text-sm font-medium text-text-secondary">
+          Primary Category
+          <select
+            className="rounded-md border border-border px-3 py-2"
+            name="categorySlug"
+            defaultValue={knownCategory?.slug ?? article.category.slug}
+            required
+          >
+            {!knownCategory && (
+              <option value={article.category.slug} disabled>
+                Legacy: {article.category.name}
+              </option>
+            )}
+            {[...INTELLIGENCE_CATEGORIES, FALLBACK_INTELLIGENCE_CATEGORY].map((category) => (
+              <option key={category.slug} value={category.slug}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-text-secondary">
+          Why It Matters
+          <textarea
+            className="min-h-28 rounded-md border border-border px-3 py-2"
+            name="whyItMatters"
+            defaultValue={article.aiSummary?.whyItMatters ?? ""}
+            placeholder="Why should sports professionals pay attention?"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-text-secondary">
+          Importance Score (editorial only)
+          <input
+            className="rounded-md border border-border px-3 py-2"
+            name="importanceScore"
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            defaultValue={article.importanceScore}
+            required
+          />
+        </label>
+        <div className="flex flex-wrap gap-6 rounded-md bg-bg-elevated p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+            <input name="isFeatured" type="checkbox" defaultChecked={article.isFeatured} />
+            Feature in Top Intelligence
+          </label>
+          <label className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+            <input
+              name="isHiddenFromFeed"
+              type="checkbox"
+              defaultChecked={article.isHiddenFromFeed}
+            />
+            Hide from public feeds
+          </label>
+        </div>
         <label className="grid gap-2 text-sm font-medium text-text-secondary">
           SEO Title
           <input className="rounded-md border border-border px-3 py-2" name="seoTitle" defaultValue={article.aiSummary?.seoTitle ?? ""} />

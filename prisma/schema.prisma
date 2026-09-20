@@ -34,32 +34,94 @@ enum UserRole {
   ADMIN
 }
 
+enum AlertType {
+  NEW_INTELLIGENCE
+}
+
+enum ResearchStudyType {
+  VALIDATION
+  RELIABILITY
+  VALIDITY
+  INTERVENTION
+  OBSERVATIONAL
+  SYSTEMATIC_REVIEW
+  META_ANALYSIS
+  CASE_STUDY
+  OTHER
+}
+
+enum EvidenceType {
+  RESEARCH_FINDING
+  VALIDATION
+  PROFESSIONAL_ADOPTION
+  PRODUCT_CLAIM
+  OTHER
+}
+
+enum EvidenceSourceType {
+  PEER_REVIEWED
+  INDEPENDENT
+  PROFESSIONAL_ADOPTION
+  VENDOR_REPORTED
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum CompanyClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CompanyMemberRole {
+  MANAGER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
 model User {
-  id          String   @id @default(uuid()) @db.Uuid
-  clerkUserId String   @unique @map("clerk_user_id")
-  email       String   @unique
-  name        String?
-  role        UserRole @default(USER)
+  id           String   @id @default(uuid()) @db.Uuid
+  clerkUserId  String   @unique @map("clerk_user_id")
+  email        String   @unique
+  name         String?
+  role         UserRole @default(USER)
   organization String?
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  watchedCompanies    WatchedCompany[]
+  watchedProducts     WatchedProduct[]
+  watchedTechnologies WatchedTechnology[]
+  alerts              Alert[]
+  subscription        Subscription?
+  companyClaims       CompanyClaim[]      @relation("ClaimSubmitter")
+  reviewedClaims      CompanyClaim[]      @relation("ClaimReviewer")
+  companyMemberships  CompanyMember[]
+  leads               Lead[]
 
   @@index([role])
   @@map("users")
 }
 
 model Source {
-  id              String             @id @default(uuid()) @db.Uuid
+  id              String     @id @default(uuid()) @db.Uuid
   name            String
-  sourceType      SourceType         @default(RSS)
-  websiteUrl      String?            @map("website_url")
-  rssUrl          String?            @map("rss_url")
+  sourceType      SourceType @default(RSS)
+  websiteUrl      String?    @map("website_url")
+  rssUrl          String?    @map("rss_url")
   domain          String?
-  reputationScore Decimal            @default(0) @map("reputation_score") @db.Decimal(4, 2)
-  isActive        Boolean            @default(true) @map("is_active")
-  lastFetchedAt   DateTime?          @map("last_fetched_at") @db.Timestamptz(6)
-  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  reputationScore Decimal    @default(0) @map("reputation_score") @db.Decimal(4, 2)
+  isActive        Boolean    @default(true) @map("is_active")
+  lastFetchedAt   DateTime?  @map("last_fetched_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   articles          Article[]
   ingestionFailures IngestionFailure[]
@@ -70,11 +132,11 @@ model Source {
 }
 
 model Category {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   articles Article[]
 
@@ -82,11 +144,11 @@ model Category {
 }
 
 model Author {
-  id           String    @id @default(uuid()) @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
   name         String
-  profileUrl   String?   @map("profile_url")
+  profileUrl   String?  @map("profile_url")
   organization String?
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   articles Article[]
 
@@ -111,6 +173,10 @@ model Article {
   publishedAt      DateTime      @map("published_at") @db.Timestamptz(6)
   fetchedAt        DateTime      @default(now()) @map("fetched_at") @db.Timestamptz(6)
   status           ArticleStatus @default(DRAFT)
+  importanceScore  Int           @default(0) @map("importance_score")
+  isFeatured       Boolean       @default(false) @map("is_featured")
+  isHiddenFromFeed Boolean       @default(false) @map("is_hidden_from_feed")
+  processedAt      DateTime?     @map("processed_at") @db.Timestamptz(6)
   duplicateOfId    String?       @map("duplicate_of_article_id") @db.Uuid
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at") @db.Timestamptz(6)
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at") @db.Timestamptz(6)
@@ -118,27 +184,522 @@ model Article {
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  source       Source             @relation(fields: [sourceId], references: [id], onDelete: Restrict)
-  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  author       Author?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  source       Source              @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  category     Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  author       Author?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
   aiSummary    AiSummary?
   articleTags  ArticleTag[]
   analytics    ArticleAnalytics[]
-  duplicateOf  Article?           @relation("ArticleDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
-  duplicates   Article[]          @relation("ArticleDuplicates")
+  duplicateOf  Article?            @relation("ArticleDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates   Article[]           @relation("ArticleDuplicates")
+  companies    ArticleCompany[]
+  products     ArticleProduct[]
+  technologies ArticleTechnology[]
+  alerts       Alert[]
 
   @@index([sourceId])
   @@index([categoryId, publishedAt(sort: Desc)])
   @@index([authorId])
   @@index([status, publishedAt(sort: Desc)])
+  @@index([status, isHiddenFromFeed, publishedAt(sort: Desc)])
+  @@index([isFeatured(sort: Desc), importanceScore(sort: Desc), publishedAt(sort: Desc)])
   @@index([publishedAt(sort: Desc)])
   @@map("articles")
+}
+
+model Company {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String   @unique
+  description      String?
+  shortDescription String?  @map("short_description")
+  website          String?
+  logoUrl          String?  @map("logo_url")
+  country          String?
+  city             String?
+  foundedYear      Int?     @map("founded_year")
+  isFeatured       Boolean  @default(false) @map("is_featured")
+  isVerified       Boolean  @default(false) @map("is_verified")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products     Product[]
+  articles     ArticleCompany[]
+  watchers     WatchedCompany[]
+  alerts       Alert[]
+  researches   ResearchCompany[]
+  evidence     Evidence[]
+  claims       CompanyClaim[]
+  members      CompanyMember[]
+  leads        Lead[]
+  leadsEnabled Boolean           @default(true) @map("leads_enabled")
+
+  @@index([name])
+  @@index([isFeatured])
+  @@map("companies")
+}
+
+model Product {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String
+  slug               String   @unique
+  description        String?
+  shortDescription   String?  @map("short_description")
+  website            String?
+  imageUrl           String?  @map("image_url")
+  vendorProvidedInfo String?  @map("vendor_provided_info")
+  companyId          String   @map("company_id") @db.Uuid
+  isFeatured         Boolean  @default(false) @map("is_featured")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  technologies ProductTechnology[]
+  useCases     ProductUseCase[]
+  sports       ProductSport[]
+  articles     ArticleProduct[]
+  watchers     WatchedProduct[]
+  alerts       Alert[]
+  researches   ResearchProduct[]
+  evidence     Evidence[]
+  leads        Lead[]
+
+  @@index([name])
+  @@index([companyId])
+  @@index([isFeatured])
+  @@map("products")
+}
+
+model Technology {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products   ProductTechnology[]
+  articles   ArticleTechnology[]
+  watchers   WatchedTechnology[]
+  alerts     Alert[]
+  researches ResearchTechnology[]
+  evidence   Evidence[]
+
+  @@index([name])
+  @@map("technologies")
+}
+
+model WatchedCompany {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([companyId])
+  @@map("watched_companies")
+}
+
+model WatchedProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([productId])
+  @@map("watched_products")
+}
+
+model WatchedTechnology {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  technologyId String   @map("technology_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, technologyId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([technologyId])
+  @@map("watched_technologies")
+}
+
+model Alert {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  type         AlertType @default(NEW_INTELLIGENCE)
+  title        String
+  message      String
+  companyId    String?   @map("company_id") @db.Uuid
+  productId    String?   @map("product_id") @db.Uuid
+  technologyId String?   @map("technology_id") @db.Uuid
+  articleId    String?   @map("article_id") @db.Uuid
+  isRead       Boolean   @default(false) @map("is_read")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt       DateTime? @map("read_at") @db.Timestamptz(6)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  technology Technology? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  article    Article?    @relation(fields: [articleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, articleId, type])
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([companyId])
+  @@index([productId])
+  @@index([technologyId])
+  @@index([articleId])
+  @@map("alerts")
+}
+
+model UseCase {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products   ProductUseCase[]
+  researches ResearchUseCase[]
+  evidence   Evidence[]
+
+  @@index([name])
+  @@map("use_cases")
+}
+
+model Sport {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products   ProductSport[]
+  researches ResearchSport[]
+  evidence   Evidence[]
+
+  @@index([name])
+  @@map("sports")
+}
+
+model Research {
+  id              String            @id @default(uuid()) @db.Uuid
+  title           String
+  slug            String            @unique
+  abstract        String?
+  summary         String?
+  authors         String?
+  journal         String?
+  publicationYear Int?              @map("publication_year")
+  publicationDate DateTime?         @map("publication_date") @db.Date
+  doi             String?           @unique
+  url             String?
+  studyType       ResearchStudyType @default(OTHER) @map("study_type")
+  population      String?
+  sampleSize      Int?              @map("sample_size")
+  isPeerReviewed  Boolean           @default(false) @map("is_peer_reviewed")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products     ResearchProduct[]
+  companies    ResearchCompany[]
+  technologies ResearchTechnology[]
+  useCases     ResearchUseCase[]
+  sports       ResearchSport[]
+  evidence     Evidence[]
+
+  @@index([publicationYear(sort: Desc)])
+  @@index([studyType])
+  @@index([isPeerReviewed])
+  @@map("research")
+}
+
+model ResearchProduct {
+  researchId String   @map("research_id") @db.Uuid
+  productId  String   @map("product_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  research Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([researchId, productId])
+  @@index([productId])
+  @@map("research_products")
+}
+
+model ResearchCompany {
+  researchId String   @map("research_id") @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  research Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([researchId, companyId])
+  @@index([companyId])
+  @@map("research_companies")
+}
+
+model ResearchTechnology {
+  researchId   String   @map("research_id") @db.Uuid
+  technologyId String   @map("technology_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  research   Research   @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([researchId, technologyId])
+  @@index([technologyId])
+  @@map("research_technologies")
+}
+
+model ResearchUseCase {
+  researchId String   @map("research_id") @db.Uuid
+  useCaseId  String   @map("use_case_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  research Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  useCase  UseCase  @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@id([researchId, useCaseId])
+  @@index([useCaseId])
+  @@map("research_use_cases")
+}
+
+model ResearchSport {
+  researchId String   @map("research_id") @db.Uuid
+  sportId    String   @map("sport_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  research Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  sport    Sport    @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([researchId, sportId])
+  @@index([sportId])
+  @@map("research_sports")
+}
+
+model Evidence {
+  id              String             @id @default(uuid()) @db.Uuid
+  title           String
+  summary         String?
+  finding         String?
+  evidenceType    EvidenceType       @map("evidence_type")
+  sourceType      EvidenceSourceType @map("source_type")
+  researchId      String?            @map("research_id") @db.Uuid
+  productId       String?            @map("product_id") @db.Uuid
+  companyId       String?            @map("company_id") @db.Uuid
+  technologyId    String?            @map("technology_id") @db.Uuid
+  useCaseId       String?            @map("use_case_id") @db.Uuid
+  sportId         String?            @map("sport_id") @db.Uuid
+  metric          String?
+  population      String?
+  sampleSize      Int?               @map("sample_size")
+  sourceUrl       String?            @map("source_url")
+  publicationYear Int?               @map("publication_year")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  research   Research?   @relation(fields: [researchId], references: [id], onDelete: SetNull)
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  company    Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  technology Technology? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  useCase    UseCase?    @relation(fields: [useCaseId], references: [id], onDelete: SetNull)
+  sport      Sport?      @relation(fields: [sportId], references: [id], onDelete: SetNull)
+
+  @@index([productId, sourceType])
+  @@index([companyId])
+  @@index([technologyId])
+  @@index([useCaseId])
+  @@index([researchId])
+  @@index([publicationYear(sort: Desc)])
+  @@map("evidence")
+}
+
+model Subscription {
+  id                   String    @id @default(uuid()) @db.Uuid
+  userId               String    @unique @map("user_id") @db.Uuid
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  plan                 Plan      @default(FREE)
+  status               String    @default("inactive")
+  currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz(6)
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("stripe_events")
+}
+
+model CompanyClaim {
+  id           String             @id @default(uuid()) @db.Uuid
+  companyId    String             @map("company_id") @db.Uuid
+  userId       String             @map("user_id") @db.Uuid
+  workEmail    String             @map("work_email")
+  jobTitle     String             @map("job_title")
+  message      String
+  status       CompanyClaimStatus @default(PENDING)
+  reviewedAt   DateTime?          @map("reviewed_at") @db.Timestamptz(6)
+  reviewedById String?            @map("reviewed_by_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     User    @relation("ClaimSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User?   @relation("ClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, userId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("company_claims")
+}
+
+model CompanyMember {
+  id        String            @id @default(uuid()) @db.Uuid
+  companyId String            @map("company_id") @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  role      CompanyMemberRole @default(MANAGER)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@map("company_members")
+}
+
+model Lead {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String?    @map("user_id") @db.Uuid
+  companyId    String     @map("company_id") @db.Uuid
+  productId    String?    @map("product_id") @db.Uuid
+  name         String
+  email        String
+  organization String
+  jobTitle     String     @map("job_title")
+  message      String
+  status       LeadStatus @default(NEW)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status, createdAt(sort: Desc)])
+  @@index([userId])
+  @@index([productId])
+  @@map("leads")
+}
+
+model ProductTechnology {
+  productId    String   @map("product_id") @db.Uuid
+  technologyId String   @map("technology_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([productId, technologyId])
+  @@index([technologyId])
+  @@map("product_technologies")
+}
+
+model ProductUseCase {
+  productId String   @map("product_id") @db.Uuid
+  useCaseId String   @map("use_case_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  useCase UseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@id([productId, useCaseId])
+  @@index([useCaseId])
+  @@map("product_use_cases")
+}
+
+model ProductSport {
+  productId String   @map("product_id") @db.Uuid
+  sportId   String   @map("sport_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sport   Sport   @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([productId, sportId])
+  @@index([sportId])
+  @@map("product_sports")
+}
+
+model ArticleCompany {
+  articleId String   @map("article_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, companyId])
+  @@index([companyId])
+  @@map("article_companies")
+}
+
+model ArticleProduct {
+  articleId String   @map("article_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, productId])
+  @@index([productId])
+  @@map("article_products")
+}
+
+model ArticleTechnology {
+  articleId    String   @map("article_id") @db.Uuid
+  technologyId String   @map("technology_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  article    Article    @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, technologyId])
+  @@index([technologyId])
+  @@map("article_technologies")
 }
 
 model AiSummary {
   id              String   @id @default(uuid()) @db.Uuid
   articleId       String   @unique @map("article_id") @db.Uuid
   summary         String
+  whyItMatters    String?  @map("why_it_matters")
   keyTakeaways    Json     @default("[]") @map("key_takeaways")
   categories      Json     @default("[]")
   tags            Json     @default("[]")

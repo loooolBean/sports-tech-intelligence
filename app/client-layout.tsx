@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, X, Sun, Moon } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "../src/lib/utils";
 import type { ReactNode } from "react";
+import { AlertNavLink } from "../src/components/alerts/alert-nav-link";
 
 const hasClerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
 
@@ -28,9 +28,11 @@ const UserButton = hasClerkKey
   : null;
 
 const NAV_LINKS = [
-  { href: "/search", label: "Search" },
-  { href: "/category", label: "Categories" },
-  { href: "/newsletter", label: "Newsletter" },
+  { href: "/", label: "Today" },
+  { href: "/latest", label: "Latest" },
+  { href: "/topics", label: "Topics" },
+  { href: "/companies", label: "Companies" },
+  { href: "/products", label: "Products" },
 ];
 
 function useDarkMode() {
@@ -43,6 +45,7 @@ function useDarkMode() {
     const isDark = stored ? stored === "dark" : prefersDark;
     setDark(isDark);
     document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.classList.toggle("light", !isDark);
     setMounted(true);
   }, []);
 
@@ -50,6 +53,7 @@ function useDarkMode() {
     setDark((prev) => {
       const next = !prev;
       document.documentElement.classList.toggle("dark", next);
+      document.documentElement.classList.toggle("light", !next);
       localStorage.setItem("theme", next ? "dark" : "light");
       return next;
     });
@@ -64,88 +68,76 @@ function Navigation() {
   const { dark, toggle, mounted } = useDarkMode();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-content items-center justify-between px-4 lg:px-8">
-        {/* Logo */}
+    <header className="sticky top-0 z-50 border-b border-border bg-bg/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-[68px] max-w-wide items-center justify-between px-4 lg:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 text-sm font-bold tracking-tight text-text-primary transition-colors hover:text-accent"
+          className="text-[0.78rem] font-bold uppercase leading-[1.05] tracking-[0.12em] text-text-primary"
         >
-          <span className="hidden sm:inline">Sports Tech Intelligence</span>
-          <span className="sm:hidden">STI</span>
+          <span className="block">Sports Tech</span>
+          <span className="block">Intelligence</span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-6 lg:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "rounded-md px-3 py-1.5 text-caption font-medium transition-colors",
-                pathname === link.href
-                  ? "bg-bg-elevated text-text-primary"
-                  : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+                "border-b py-1 text-caption font-medium transition-colors",
+                pathname === link.href ||
+                  (link.href !== "/" && pathname.startsWith(`${link.href}/`))
+                  ? "border-accent text-text-primary"
+                  : "border-transparent text-text-secondary hover:border-border hover:text-text-primary"
               )}
             >
               {link.label}
             </Link>
           ))}
-          {/* Dark Mode Toggle */}
-          <button
-            onClick={toggle}
-            className="rounded-md p-2 text-text-tertiary transition-colors hover:bg-bg-elevated hover:text-text-secondary"
-            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {mounted && dark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
           {hasClerkKey && SignedIn && (
             <SignedIn>
               <Link
-                href="/dashboard"
+                href="/watchlist"
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-caption font-medium transition-colors",
-                  pathname === "/dashboard"
-                    ? "bg-bg-elevated text-text-primary"
-                    : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+                  "border-b border-transparent py-1 text-caption font-medium transition-colors",
+                  pathname.startsWith("/watchlist")
+                    ? "border-accent text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                Dashboard
-              </Link>
-              <Link
-                href="/admin"
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-caption font-medium transition-colors",
-                  pathname.startsWith("/admin")
-                    ? "bg-bg-elevated text-text-primary"
-                    : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
-                )}
-              >
-                Admin
+                Watchlist
               </Link>
             </SignedIn>
           )}
         </nav>
 
-        {/* Right side */}
         <div className="flex items-center gap-2">
           <Link
             href="/search"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-bg-elevated hover:text-text-secondary"
-            aria-label="Search"
+            className="inline-flex px-2 py-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary"
           >
-            <Search className="h-4 w-4" />
+            Search
           </Link>
-
+          <button
+            onClick={toggle}
+            className="hidden px-2 py-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary sm:inline-flex"
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {mounted ? (dark ? "Light" : "Dark") : "Theme"}
+          </button>
           {hasClerkKey && SignedIn && SignedOut && UserButton ? (
             <>
+              <SignedIn>
+                <AlertNavLink />
+              </SignedIn>
               <SignedIn>
                 <UserButton afterSignOutUrl="/" />
               </SignedIn>
               <SignedOut>
                 <Link
                   href="/sign-in"
-                  className="rounded-md bg-text-primary px-3 py-1.5 text-caption font-medium text-bg transition-colors hover:bg-text-secondary"
+                  className="hidden border border-text-primary px-3 py-2 text-caption font-medium text-text-primary transition-colors hover:bg-text-primary hover:text-bg sm:inline-flex"
                 >
                   Sign in
                 </Link>
@@ -154,16 +146,15 @@ function Navigation() {
           ) : (
             <Link
               href="/sign-in"
-              className="rounded-md bg-text-primary px-3 py-1.5 text-caption font-medium text-bg transition-colors hover:bg-text-secondary"
+              className="hidden border border-text-primary px-3 py-2 text-caption font-medium text-text-primary transition-colors hover:bg-text-primary hover:text-bg sm:inline-flex"
             >
               Sign in
             </Link>
           )}
 
-          {/* Mobile menu button */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-bg-elevated hover:text-text-secondary md:hidden"
+            className="flex h-9 w-9 items-center justify-center text-text-secondary transition-colors hover:text-text-primary lg:hidden"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -171,16 +162,8 @@ function Navigation() {
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden border-t border-border bg-bg md:hidden"
-          >
+      {mobileOpen && (
+        <div className="border-t border-border bg-bg lg:hidden">
             <nav className="flex flex-col px-4 py-3">
               {NAV_LINKS.map((link) => (
                 <Link
@@ -188,15 +171,33 @@ function Navigation() {
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "rounded-md px-3 py-2 text-caption font-medium transition-colors",
-                    pathname === link.href
-                      ? "bg-bg-elevated text-text-primary"
+                    "border-b border-border-subtle px-0 py-3 text-sm font-medium transition-colors",
+                    pathname === link.href ||
+                      (link.href !== "/" && pathname.startsWith(`${link.href}/`))
+                      ? "text-accent"
                       : "text-text-tertiary hover:text-text-secondary"
                   )}
                 >
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/search"
+                onClick={() => setMobileOpen(false)}
+                className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary"
+              >
+                Search
+              </Link>
+              <button onClick={toggle} className="border-b border-border-subtle px-0 py-3 text-left text-sm font-medium text-text-secondary">
+                {mounted ? (dark ? "Light mode" : "Dark mode") : "Theme"}
+              </button>
+              {hasClerkKey && SignedOut ? (
+                <SignedOut>
+                  <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary">Sign in</Link>
+                </SignedOut>
+              ) : !hasClerkKey ? (
+                <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary">Sign in</Link>
+              ) : null}
               {hasClerkKey && SignedIn && (
                 <SignedIn>
                   <Link
@@ -207,18 +208,38 @@ function Navigation() {
                     Dashboard
                   </Link>
                   <Link
-                    href="/admin"
+                    href="/watchlist"
                     onClick={() => setMobileOpen(false)}
                     className="rounded-md px-3 py-2 text-caption font-medium text-text-tertiary transition-colors hover:text-text-secondary"
                   >
-                    Admin
+                    Watchlist
+                  </Link>
+                  <Link
+                    href="/alerts"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-md px-3 py-2 text-caption font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+                  >
+                    Alerts
+                  </Link>
+                  <Link
+                    href="/vendor"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-md px-3 py-2 text-caption font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+                  >
+                    Vendor Dashboard
+                  </Link>
+                  <Link
+                    href="/settings/billing"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-md px-3 py-2 text-caption font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+                  >
+                    Billing
                   </Link>
                 </SignedIn>
               )}
             </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </header>
   );
 }
@@ -226,17 +247,21 @@ function Navigation() {
 function Footer() {
   return (
     <footer className="border-t border-border bg-bg">
-      <div className="mx-auto max-w-content px-4 py-10 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-caption text-text-tertiary">
-            &copy; {new Date().getFullYear()} Sports Technology Intelligence
-          </p>
-          <nav className="flex gap-4">
-            <Link href="/privacy" className="text-caption text-text-tertiary hover:text-text-secondary transition-colors">
-              Privacy
-            </Link>
+      <div className="mx-auto max-w-wide px-4 py-10 lg:px-8">
+        <div className="grid gap-7 sm:grid-cols-[1fr_auto] sm:items-start">
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Sports Tech Intelligence</p>
+            <p className="mt-2 max-w-md text-caption text-text-tertiary">Independent coverage of sports technology, companies, products and research.</p>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+            {[{ href: "/", label: "Today" }, { href: "/latest", label: "Latest" }, { href: "/topics", label: "Topics" }, { href: "/companies", label: "Companies" }, { href: "/products", label: "Products" }, { href: "/privacy", label: "Privacy" }].map((item) => (
+              <Link key={item.href} href={item.href} className="text-caption text-text-secondary transition-colors hover:text-text-primary">
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
+        <p className="mt-8 border-t border-border pt-5 text-[0.7rem] text-text-tertiary">&copy; {new Date().getFullYear()} Sports Technology Intelligence</p>
       </div>
     </footer>
   );

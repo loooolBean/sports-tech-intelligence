@@ -51,7 +51,7 @@ async function ingestRss(request: Request) {
         sourceId: source.id,
         rssUrl: source.rssUrl!,
         defaultCategorySlug: "uncategorized",
-        autoPublish: false,
+        autoPublish: true,
         maxItems: itemsPerSource,
       });
       results.push({ source: source.name, ...result });

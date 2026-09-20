@@ -69,6 +69,14 @@ export class ArticleSeoMetadataService {
       sourceName: article.source.name,
       publishedAt: article.publishedAt,
     });
+    const category = await this.db.category.upsert({
+      where: { slug: slugify(summary.primaryCategory) },
+      create: {
+        name: summary.primaryCategory,
+        slug: slugify(summary.primaryCategory),
+      },
+      update: { name: summary.primaryCategory },
+    });
 
     // Use sequential operations instead of interactive transaction
     // to avoid pgbouncer "Transaction not found" errors on Supabase
@@ -77,8 +85,9 @@ export class ArticleSeoMetadataService {
         create: {
           articleId: article.id,
           summary: summary.summary,
+          whyItMatters: summary.whyItMatters,
           keyTakeaways: summary.keyTakeaways,
-          categories: summary.categories,
+          categories: [summary.primaryCategory],
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
@@ -87,8 +96,9 @@ export class ArticleSeoMetadataService {
         },
         update: {
           summary: article.aiSummary?.summary ?? summary.summary,
+          whyItMatters: article.aiSummary?.whyItMatters ?? summary.whyItMatters,
           keyTakeaways: article.aiSummary?.keyTakeaways ?? summary.keyTakeaways,
-          categories: article.aiSummary?.categories ?? summary.categories,
+          categories: article.aiSummary?.categories ?? [summary.primaryCategory],
           tags: article.aiSummary?.tags ?? summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
@@ -102,6 +112,9 @@ export class ArticleSeoMetadataService {
         where: { id: article.id },
         data: {
           excerpt: article.excerpt ?? truncate(summary.summary.replace(/\s+/g, " "), 280),
+          categoryId: category.id,
+          importanceScore: summary.importanceScore,
+          processedAt: new Date(),
         },
       });
 

@@ -1,17 +1,24 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { requireAdminUser } from "../../src/lib/auth";
 
 const navItems = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/articles", label: "Articles" },
+  { href: "/admin/research", label: "Research" },
+  { href: "/admin/evidence", label: "Evidence" },
+  { href: "/admin/claims", label: "Company Claims" },
+  { href: "/admin/leads", label: "Leads" },
   { href: "/admin/sources", label: "Sources" },
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/tags", label: "Tags" },
   { href: "/admin/newsletter", label: "Newsletter" },
   { href: "/admin/failures", label: "Failures" },
 ];
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireAdminUser();

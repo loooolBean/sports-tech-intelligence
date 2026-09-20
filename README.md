@@ -1,354 +1,549 @@
-# Sports Technology Intelligence Platform
+# Sports Tech Intelligence
 
-体育科技资讯平台：从 RSS 获取文章，提取正文和图片，生成 AI 摘要、要点、分类、标签及 SEO 元数据，再由管理员审核发布。
+Sports Tech Intelligence 是一个面向体育从业者的每日体育科技情报产品，同时保留公司、产品、Research、Evidence、比较和商业验证能力。
 
-## 项目地址
+当前产品入口已重构为 **V0.7 Daily Intelligence Feed**：用户无需登录，打开首页就能看到当天最值得关注的体育科技动态。仓库中已有的 V0.8 Research、Pro、Stripe、Vendor 和 Lead 功能仍然可用，但不再占据首页和主导航的第一优先级。
 
-- 网站：[Sports Technology Intelligence](https://sports-tech-intelligence.vercel.app)
-- 登录：[账号登录](https://sports-tech-intelligence.vercel.app/sign-in)
-- 后台：[管理后台](https://sports-tech-intelligence.vercel.app/admin)
-- GitHub：[loooolBean/sports-tech-intelligence](https://github.com/loooolBean/sports-tech-intelligence)
-- 当前本地目录：`E:\you-are-a-senior-saas-architect`
+## 产品能力
 
-### 最近验证状态
+### Daily Intelligence Feed
 
-截至 2026-09-05：
+- `/` 直接展示日期、过去 24 小时更新数、最多 5 条 Top Intelligence 和 15 条 Latest Intelligence
+- Top Intelligence 只选择过去 24 小时、必要时扩大到 48 小时的高质量内容，不用旧文或低分内容凑数
+- `/latest` 支持 6 个固定主题和 Today / This Week / All 时间筛选，筛选状态保留在可分享 URL 中
+- `/topics` 和 `/topics/[slug]` 提供稳定的主题入口、最新内容和相关 Tags
+- Article Detail 按 Summary、Why It Matters、最多 3 条 Key Takeaways、Original Source、Tags、关联 Company/Product 和 Related Intelligence 展示
+- Public Feed、Topic 和 Article 页面无需登录；主导航聚焦 Today、Latest、Topics、Companies、Products、Search
 
-- Vercel 线上首页和登录页返回 HTTP 200，首页能够读取文章，没有 Prisma 或数据库连接错误。
-- Supabase 免费项目曾因闲置暂停，现已恢复并通过 `SELECT 1` 连接测试。免费项目以后仍可能再次暂停。
-- 本地开发服务器在 `http://localhost:3000` 正常运行，首页返回 HTTP 200。
-- 未登录直接访问 `/dashboard` 或 `/admin` 目前可能返回 404；请先打开 `/sign-in` 登录。
-- Git 远程仓库与上面的 GitHub 地址一致。仓库同时存在不同提交的 `main` 与 `master` 分支，发布前需要确认 Vercel 绑定的生产分支。
+### Intelligence 与内容
 
-## 当前能做什么
+- 公司、产品、技术、使用场景和运动项目目录
+- 公开搜索、产品比较、Watchlist、Alerts 和个性化 Dashboard
+- RSS 采集、重复检测、正文提取、一次结构化 AI 处理、质量分级和安全发布
+- Article/Intelligence 与科学 Research 分离建模
 
-| 模块 | 当前实现 |
-| --- | --- |
-| 内容采集 | 遍历启用且有 RSS URL 的来源，提取正文和图片，关键词相关性筛选、去重、记录失败 |
-| AI 处理 | 生成摘要、关键要点、分类、标签、SEO 标题和描述 |
-| 阅读与发现 | 首页、文章详情、分类、标签、关键词搜索、深浅色主题 |
-| 后台运营 | 文章编辑与发布、来源启停、分类管理、标签查看、失败日志、订阅者管理 |
-| SEO 与订阅源 | Sitemap、Robots、结构化数据、Open Graph、`/feed.xml` |
-| Newsletter | 保存订阅邮箱、查看订阅者；尚未实现邮件投递、每日摘要发送和退订流程 |
+### Research 与 Evidence
 
-标准采集接口将新文章保存为 **DRAFT**，不会自动发布。只有 **PUBLISHED** 文章才进入公开文章列表。来源类型可选新闻网站、博客等，但标准采集入口仍要求提供 RSS URL，并非输入任意网站就能全站爬取。
+- `/research` 公开研究库及 Study Type、Technology、Use Case、Sport、Year、Peer-reviewed 筛选
+- `/research/[slug]` 展示作者、期刊、研究设计、样本、关联实体、结构化发现和 DOI
+- Evidence 明确区分 Independent、Peer-reviewed、Professional Adoption 和 Vendor-reported 来源
+- Product 页面展示真实 Evidence 计数、可追溯来源、筛选和 Free Preview
+- Company 页面聚合关联 Research、Evidence 和拥有证据的产品
+- Research 与 Evidence 均提供分页 Admin CRUD
+
+平台只呈现证据、来源和研究背景，不生成 Evidence Score、产品排名或“最佳产品”结论。未收录证据不等于证据不存在。
+
+### Free 与 Pro
+
+权益由统一 entitlement layer 管理，不在页面中散落套餐判断。
+
+| 能力 | Free | Pro |
+| --- | --- | --- |
+| 基础搜索及公开公司/产品页面 | 完整 | 完整 |
+| Evidence | 计数和前 2 条预览 | 完整详情与高级筛选 |
+| Research | 标题、摘要、来源与 DOI | 完整结构化发现与提取证据 |
+| Compare | 最多 2 个产品、基础对比 | 最多 4 个产品、Research/Evidence 对比 |
+| Watchlist | 最多 5 个实体 | 无限 |
+| Dashboard | 基础 Intelligence | Research Updates |
+
+### Stripe Subscription
+
+- `/pricing` 提供 Free 和 Pro 套餐
+- 服务端创建 Stripe Checkout Session，并复用已有 Customer
+- Stripe Webhook 是订阅状态的唯一事实来源
+- Webhook 验证签名并使用 `StripeEvent` 实现幂等处理
+- 支持 `checkout.session.completed`、`customer.subscription.created`、`customer.subscription.updated` 和 `customer.subscription.deleted`
+- `/settings/billing` 展示当前方案并进入 Stripe Billing Portal
+- `/billing/success` 提供付款后的产品引导
+
+### Vendor Claim 与 Lead Generation
+
+- Company 页面提供 Claim Profile 入口
+- Claim 必须经管理员 Approve/Reject，不能自动获得公司控制权
+- 审核通过后建立 `CompanyMember`，Vendor 可维护公司和产品的官方信息
+- Vendor-provided content 与平台独立 Research/Evidence 明确分区
+- 只有已认领且启用 Leads 的公司产品才显示 Request Demo
+- Leads 去重、分页，并通过服务端公司归属校验隔离
+
+完整商业路径：
+
+```text
+User:   Discover → Search → Evidence → Research → Compare → Watch → Pro → Stripe
+Vendor: Company → Claim → Admin Review → Showcase → Demo Request → Lead
+```
+
+## 日常使用指南
+
+### 普通用户
+
+普通用户最常用的方式不是先搜索，而是每天快速回答“今天体育科技发生了什么”。
+
+#### 1. 每天先看 Today
+
+打开 `/`，无需登录即可看到：
+
+- 当天日期和过去 24 小时更新数
+- `Today's Top Intelligence`：过去 24–48 小时内最多 5 条高优先级情报
+- `Latest Intelligence`：按发布时间倒序的最新内容
+- 6 个固定 Topic 入口
+
+Top 区为空表示最近 48 小时没有达到质量门槛的内容，不代表页面故障；继续向下即可查看 Latest。首页不会为了凑数混入过时或低价值信息。
+
+#### 2. 用 Intelligence Detail 快速判断是否值得跟进
+
+点击任意情报后，建议按以下顺序阅读：
+
+1. `Summary`：发生了什么。
+2. `Why It Matters`：为什么体育从业者值得关注。
+3. `Key Takeaways`：最多 3 个可扫读重点。
+4. `Original Source`：回到原始报道核对上下文；官方公司来源会明确标记。
+5. `Tags`、Related Company/Product 和 Related Intelligence：继续追踪相关主题与实体。
+
+旧文章尚未完成 Why It Matters 回填时会显示明确的占位说明，不会生成假洞察或伪造完整正文。
+
+#### 3. 在 Latest 中筛选完整情报流
+
+进入 `/latest`，只使用两组简单筛选：
+
+- Topic：All 或 6 个固定主分类
+- Period：Today、This Week、All
+
+筛选会写入 URL，例如：
+
+```text
+/latest?category=ai-sports
+/latest?period=today
+/latest?category=performance-technology&period=week
+```
+
+因此页面可以刷新、收藏或直接分享给同事。
+
+#### 4. 按 Topic 持续浏览
+
+`/topics` 展示 6 个主分类及各自最近 3 条内容；进入 `/topics/[slug]` 可查看该 Topic 的最新情报和常见相关 Tags。
+
+固定 Topic 为：
+
+- AI & Sports
+- Performance Technology
+- Wearables & Sensors
+- Sports Science
+- Products & Launches
+- Business & Investment
+
+`Other` 只作为无法归类内容的后备分类，不作为首页主 Topic。
+
+#### 5. 需要深度调查时再使用第二层工具
+
+- `/search`：搜索 Company、Product、Research 和 Intelligence。
+- `/companies`、`/products`：查看实体资料、关联情报和 Evidence。
+- `/research`：核对作者、期刊、样本、研究设计、Findings、DOI 和原始来源。
+- `/compare`：Free 最多比较 2 个产品，Pro 最多 4 个。
+- 登录后使用 `/watchlist`、`/alerts` 和 `/dashboard` 持续跟踪；相关情报会显示 Watchlist 标识。
+
+Free 用户最多关注 5 个实体；达到限制不会删除已有数据。Article Save 本轮没有扩展，因为当前数据模型没有既有 SavedArticle 路由，避免扩大 Daily Feed 范围。
+
+需要完整 Evidence、结构化 Research 或高级比较时，可通过 `/pricing` 升级 Pro，并在 `/settings/billing` 管理订阅。如果产品所属公司已经完成 Claim 且启用 Leads，Product Detail 会显示 Request Demo。
+
+推荐的日常路径：
+
+```text
+Today → Top / Latest → Intelligence Detail → Original Source
+      → Topic → Company / Product → Watchlist / Alerts
+```
+
+### 后台管理员
+
+管理员的首要任务是保证公开 Feed 新、准、可读，同时继续维护 Research/Evidence 边界、Company Claim 和 Lead 运营。使用 Admin 前必须：
+
+1. 配置一组匹配的 Clerk publishable/secret keys。
+2. 使用 Clerk 登录。
+3. 确保登录账号的主邮箱已列入 `ADMIN_EMAILS`。
+4. 进入 `/admin`，确认能够看到 Admin Console。
+
+不要只依赖前端菜单判断权限；所有管理操作仍会执行服务端管理员校验。
+
+#### 1. 每日先看 Admin Dashboard
+
+进入 `/admin`，优先检查：
+
+- Draft Articles
+- Ingestion Failures
+- Pending Company Claims
+- New Leads
+- Research 和 Evidence 数量
+
+优先处理采集/AI 失败、待审 Draft 和错误分类，再处理 Claim、Lead 与一般资料维护。
+
+#### 2. 检查 Daily Feed 采集链路
+
+标准内容流程：
+
+```text
+Source
+→ RSS Ingestion
+→ URL / Hash / 48h Similar-title Duplicate Check
+→ Draft Article
+→ One Structured AI Response
+→ Summary + Category + Tags + Why It Matters
+→ Key Takeaways + Importance Score + SEO
+→ Safe Auto-publish or Admin Review
+```
+
+日常操作：
+
+1. 在 `/admin/sources` 启用、停用或维护 RSS 来源。
+2. 运行定时任务或手工触发 RSS ingestion。
+3. 在 `/admin/failures` 检查抓取、解析、AI 或数据库失败。
+4. 在 `/admin/articles` 检查 Category、Importance Score、Published、Duplicate、Featured 和 Hidden 状态。
+5. 打开文章编辑页，修正 Category、Importance Score、Why It Matters、Featured、Hide from feed 和发布状态。
+6. 在公开首页、Latest、Topic 与 Article Detail 抽查结果。
+
+新文章始终先写为 Draft。只有 AI 结构化处理成功且 `importanceScore >= 35` 时，自动采集流程才允许发布；AI 失败、低分内容和重复内容保持 Draft 或从 Feed 排除。不要再按“所有 RSS 永远停留在 Draft”理解当前流程。
+
+#### 3. 管理 Top Intelligence
+
+Top 5 只从 Published、非重复、未隐藏的内容中选择：
+
+```text
+24 小时窗口
+→ 不足 5 条时扩大到 48 小时
+→ isFeatured DESC
+→ importanceScore DESC
+→ publishedAt DESC
+```
+
+普通内容需 `importanceScore >= 45`；Admin 可通过 `isFeatured` 人工置顶修正 AI 判断。Score 是 0–100 的内部编辑排序值，绝不在公开 Feed 展示，也不应被描述为科学评分。
+
+`Hide from feed` 用于从公开 Feed、Latest 和 Topic 中移除内容而不删除数据库记录。重复新闻应保留最早或信息最完整的来源，其余文章通过 `duplicateOfId` 标记并从主 Feed 排除。
+
+#### 4. 控制旧文回填
+
+仅回填最近 30 天、尚未处理或缺少 Why It Matters 的非重复文章：
+
+```powershell
+npm run backfill:intelligence -- --limit=5
+```
+
+默认 25 条，`--limit` 最大 100。先用小批量验证有效的 `AI_API_KEY`、模型输出和数据库连接，再逐步扩大；不要对整库无控制调用 AI。回填失败不会覆盖已有字段。
+
+#### 5. 管理 Research 与 Evidence
+
+在 `/admin/research` 和 `/admin/evidence`：
+
+- 创建、编辑和删除 Research/Evidence
+- 填写作者、期刊、年份、Study Type、Population、Sample Size、摘要和 Findings
+- 关联 Product、Company、Technology、Use Case 和 Sport
+- 确保每条 Evidence 可跳转到 Research、DOI 或 Original Source
+- 核对 Independent、Peer-reviewed、Professional Adoption 与 Vendor-reported 分类
+
+保留研究限制和人群背景，不得把相关性夸大为因果关系。Vendor Claim 不能表现为独立科学证据，管理员不得创建 Evidence Score、产品排名或 Winner 结论。
+
+#### 6. 审核 Company Claims 与 Vendor 内容
+
+进入 `/admin/claims`，检查 Company、申请用户、工作邮箱、职位、说明和提交时间。
+
+审核流程：
+
+```text
+Pending Claim
+→ Verify Company Identity and Work Email
+→ Approve or Reject
+→ Approved Claim Creates CompanyMember
+```
+
+- Approve 会建立 CompanyMember，Reject 不授予公司控制权。
+- 公司已经被认领或存在重复申请时，先核对现有成员和 Claim 状态。
+- Vendor 可维护公司/产品官方资料，但不能修改独立 Evidence、Research 结论或证据分类。
+
+Approved/Verified 只表示企业身份通过验证，不代表其产品获得科学有效性认证。
+
+#### 7. 查看 Leads 与订阅状态
+
+在 `/admin/leads` 查看全平台 Demo Requests，用于运营监督和异常排查。Vendor 只能在 `/vendor/leads` 查看其所属公司的 Leads。
+
+不要公开联系人信息或把 Message 写入 Analytics。管理员还应定期检查：
+
+- Stripe Webhook 是否成功，是否出现重复或签名失败事件
+- Subscription status 是否与 Stripe 一致
+- Clerk Webhook 和登录是否正常
+- Supabase 是否在线、迁移是否全部应用
+- Cron、RSS ingestion 和 SEO backfill 是否成功
+- Public、Protected、Vendor 和 Admin 路由是否符合预期
+
+推荐的管理员日常顺序：
+
+```text
+Admin Dashboard
+→ Ingestion Failures
+→ Draft / Low-score / Duplicate Articles
+→ Public Feed Spot Check
+→ Research/Evidence Quality
+→ Pending Claims
+→ New Leads
+→ Subscription/Webhook Health
+```
 
 ## 技术栈
 
-Next.js 15 App Router、React 19、TypeScript、Tailwind CSS 3、Framer Motion；PostgreSQL + Prisma 6；Clerk 登录；OpenAI SDK 对接可配置的 AI 服务；Vercel 部署。
+- Next.js 16 App Router、React 19、TypeScript
+- Tailwind CSS 3、Framer Motion、Lucide React
+- PostgreSQL/Supabase、Prisma 6
+- Clerk Authentication
+- Stripe 官方 Node SDK
+- OpenAI-compatible AI service、Zod
+- Vercel
 
-AI 服务由 `AI_API_KEY`、`AI_API_BASE_URL`、`AI_MODEL` 决定，并非固定使用某一家供应商。当前源码调用 `chat.completions.create`，使用 JSON object 输出并经 Zod 校验；`AGENTS.md` 中的 Responses API 描述与当前实现不一致，后续应统一。
+本项目为单 package，不是 monorepo。主要目录：
+
+```text
+app/                 App Router 页面与 Route Handlers
+src/actions/         Server Actions
+src/components/      Research、Evidence、Pro、Vendor、Lead 等 UI
+src/lib/             数据访问、认证、权益、Stripe 与业务查询
+src/services/        RSS、AI 摘要与 SEO 服务
+src/utils/           纯内容处理工具
+prisma/              Schema、迁移与 seed
+tests/               Node 测试
+scripts/             采集、回填和诊断脚本
+```
 
 ## 本地启动
 
-以下以 Windows PowerShell 为例。准备 Node.js、npm、可连接的 PostgreSQL、AI 服务凭据及 Clerk 应用。下列命令使用 Node 的 `--env-file`，需要 Node.js 20.6 或更高版本；本次检查机器上的 Node 为 v24.16.0。
-
-### 已配置项目的最快启动
-
-如果依赖、`.env` 和数据库都已配置，在普通 Windows PowerShell 中运行：
+### 1. 安装依赖
 
 ```powershell
-Set-Location 'E:\you-are-a-senior-saas-architect'
-npm run prisma:generate
-npm run dev
-```
-
-看到 `Ready` 后打开 [http://localhost:3000](http://localhost:3000)。开发服务器需要保持运行；关闭该 PowerShell 窗口或按 `Ctrl + C` 会停止网站。
-
-如果出现 `Error opening a TLS connection: 安全包中没有可用的凭证`，请从普通 Windows PowerShell 启动服务，不要从受限的自动化沙箱进程启动。
-
-### 1. 进入项目并安装依赖
-
-已有本地项目：
-
-```powershell
-Set-Location 'E:\you-are-a-senior-saas-architect'
-npm ci
-```
-
-新机器：
-
-```powershell
-git clone https://github.com/loooolBean/sports-tech-intelligence.git
-Set-Location sports-tech-intelligence
 npm ci
 ```
 
 ### 2. 配置环境变量
 
-仅在没有 `.env` 时复制，保留已有配置：
+仅在 `.env` 不存在时复制模板：
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-编辑 `.env`：
+不要提交 `.env` 或任何真实密钥。
 
-| 变量 | 用途与要求 |
-| --- | --- |
-| `DATABASE_URL` | 应用数据库连接，必填；可使用 Supabase 提供的连接池地址 |
-| `DIRECT_URL` | Prisma 迁移连接，必填；本地 PostgreSQL 可与 `DATABASE_URL` 相同 |
-| `AI_API_KEY` | 采集时生成摘要、SEO 回填需要；兼容读取 `OPENAI_API_KEY` |
-| `AI_API_BASE_URL` | AI 服务地址；默认值见 `.env.example`，应与所选供应商匹配 |
-| `AI_MODEL` | 该服务实际支持的模型名；兼容读取 `OPENAI_MODEL` |
-| `NEXT_PUBLIC_SITE_URL` | 本地填写 `http://localhost:3000`，部署时填写正式网站地址 |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | 真实 Clerk 公钥，不能直接保留 `pk_test_...` 占位符 |
-| `CLERK_SECRET_KEY` | 与公钥对应的 Clerk 服务端密钥 |
-| `CLERK_WEBHOOK_SECRET` | 配置 Clerk Webhook 同步时使用 |
-| `ADMIN_EMAILS` | 管理员邮箱，多个用逗号分隔；需与登录账号主邮箱一致 |
-| `CRON_SECRET` | 采集与 SEO 接口的共享密钥，本地调用与服务端保持一致 |
+| 变量 | 必需范围 | 用途 |
+| --- | --- | --- |
+| `DATABASE_URL` | 应用必需 | PostgreSQL 应用连接；Supabase 可使用连接池地址 |
+| `DIRECT_URL` | 迁移必需 | Prisma migration 的直接或 session 连接 |
+| `NEXT_PUBLIC_SITE_URL` | 应用必需 | 本地通常为 `http://localhost:3000` |
+| `AI_API_KEY` | AI/RSS 功能 | AI 服务密钥 |
+| `AI_API_BASE_URL` | AI/RSS 功能 | OpenAI-compatible API 地址 |
+| `AI_MODEL` | AI/RSS 功能 | 服务支持的模型名 |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | 登录功能 | Clerk publishable key |
+| `CLERK_SECRET_KEY` | 登录功能 | 必须与 publishable key 属于同一 Clerk instance |
+| `CLERK_WEBHOOK_SECRET` | Clerk 同步 | 验证 Clerk Webhook |
+| `ADMIN_EMAILS` | Admin | 逗号分隔的管理员主邮箱 |
+| `CRON_SECRET` | Cron | 保护采集与 SEO Route Handlers |
+| `STRIPE_SECRET_KEY` | Pro 付款 | Stripe 服务端密钥 |
+| `STRIPE_WEBHOOK_SECRET` | Pro 付款 | 验证 Stripe Webhook 签名 |
+| `STRIPE_PRO_PRICE_ID` | Pro 付款 | Stripe recurring Price ID |
 
-不要提交 `.env` 或真实密钥。Cron 接口在未设置 `CRON_SECRET` 时返回 503；部署前必须配置该变量。
+Stripe Checkout 全部在服务端执行，因此不需要 `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`。
 
-**Clerk 的现有限制：** 前端会根据公钥决定是否显示认证组件，但 `middleware.ts` 仍无条件启用 Clerk，服务端认证也没有完整禁用分支。因此不要把“不配置 Clerk”当作已验证可用的运行模式；要使用后台，请配置有效的 Clerk 密钥和管理员邮箱。
+Clerk 是可选模块：未提供有效 key 时公开页面仍可运行，但登录、Admin、Watchlist、Billing 和 Vendor 功能不可用。若启用 Clerk，publishable key 与 secret key 必须来自同一应用，否则可能出现认证重定向循环。
 
-### 3. 初始化数据库
-
-对全新的本地开发数据库执行：
+### 3. 准备 Prisma
 
 ```powershell
 npm run prisma:generate
+npx prisma migrate status
+```
+
+新建的开发数据库可运行：
+
+```powershell
 npm run prisma:migrate
 ```
 
-迁移命令实际是 `prisma migrate dev`，用于开发。生产环境应用已有迁移使用 `npx prisma migrate deploy`，不要对生产库运行开发迁移或重置操作。
+生产环境只应用已提交迁移：
 
-### 4. 启动网站
+```powershell
+npx prisma migrate deploy
+```
+
+不要对已有数据的数据库运行 `prisma migrate reset`。
+
+### 4. 启动项目
 
 ```powershell
 npm run dev
 ```
 
-打开 [本地首页](http://localhost:3000)。通过 `/sign-up` 注册或 `/sign-in` 登录，再进入 `/admin`。当主邮箱包含在 `ADMIN_EMAILS` 中时，读取用户资料会将其设为 ADMIN。
+打开 [http://localhost:3000](http://localhost:3000)。停止服务器使用 `Ctrl+C`。
 
-如果数据库尚无已发布文章，首页为空是正常现象。接着完成下面的首次内容导入。
-
-### 完全停止并重新启动
-
-在运行 `npm run dev` 的 PowerShell 窗口按 `Ctrl + C`。然后确认 3000 端口是否仍被占用：
+若本地 Clerk key 尚未配置或不匹配，可在不修改 `.env` 的情况下启动只包含公开功能的会话：
 
 ```powershell
-netstat -ano | Select-String ':3000'
-```
-
-没有输出表示服务已经停止。如果仍看到 `LISTENING`，记录该行最后一列的 PID，并停止该进程：
-
-```powershell
-Stop-Process -Id <PID> -Force
-```
-
-重新生成 Prisma Client 并启动：
-
-```powershell
-Set-Location 'E:\you-are-a-senior-saas-architect'
-npm run prisma:generate
+$env:NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = ''
+$env:CLERK_SECRET_KEY = ''
 npm run dev
 ```
 
-最后验证首页：
+## Stripe Dashboard 配置
 
-```powershell
-$response = Invoke-WebRequest -UseBasicParsing http://localhost:3000/ -TimeoutSec 30
-$response.StatusCode
-```
+代码完成后仍需在 Stripe Dashboard 手工完成：
 
-输出 `200` 表示网站能够响应。
+1. 创建 Pro recurring Product/Price，将 ID 写入 `STRIPE_PRO_PRICE_ID`。
+2. 创建指向 `https://<domain>/api/webhooks/stripe` 的 Webhook endpoint。
+3. 订阅上文列出的一个 Checkout 和三个 Subscription 生命周期事件。
+4. 将 signing secret 写入 `STRIPE_WEBHOOK_SECRET`。
+5. 启用并配置 Billing Portal。
 
-### 常见启动错误
+缺少这些配置时，公开产品功能仍可运行，但真实 Checkout、订阅同步和 Billing Portal 不可用。
 
-| 错误 | 原因 | 处理 |
-| --- | --- | --- |
-| `@prisma/client did not initialize yet` | Prisma Client 尚未生成，或服务仍缓存旧客户端 | 停止开发服务器，执行 `npm run prisma:generate`，再执行 `npm run dev` |
-| `EPERM ... query_engine-windows.dll.node` | 开发服务器占用 Prisma 引擎文件 | 先用 `Ctrl + C` 或 `Stop-Process` 完全停止占用 3000 端口的进程，再生成客户端 |
-| `Can't reach database server ...:6543` | Supabase 项目暂停、连接串失效或数据库仍在恢复 | 按下一节恢复 Supabase，运行连接测试后重启网站 |
-| `安全包中没有可用的凭证` | Windows 受限进程无法取得 TLS 凭据 | 在普通 Windows PowerShell 中启动网站 |
+## 主要路由
 
-## Supabase 暂停与数据库连接故障
-
-出现下面任一错误时，Prisma Client 通常已经生成，但应用连不上 Supabase：
-
-```text
-Can't reach database server at aws-1-ap-southeast-2.pooler.supabase.com:6543
-Invalid prisma.article.findMany() invocation
-```
-
-按以下顺序处理：
-
-1. 登录 [Supabase Dashboard](https://supabase.com/dashboard)，进入当前项目。
-2. 如果页面显示 `Project is paused`，点击 `Resume project` 并确认恢复。
-3. 等待状态从 `Restoration in progress` 或 `Coming up...` 变为正常运行。恢复通常需要几分钟。
-4. 从项目的 `Connect` 页面重新复制连接串，不要手写主机名、用户名或端口。
-5. 将 Transaction Pooler（端口 6543）填写到 `DATABASE_URL`，并保留 `pgbouncer=true`。
-6. 将 Session Pooler（端口 5432）填写到 `DIRECT_URL`。
-7. 保存 `.env`，运行连接测试：
-
-```powershell
-npx tsx scripts/test-supabase.ts
-```
-
-看到 `Supabase OK: [ { test: 1 } ]` 表示数据库可用。随后按上面的“完全停止并重新启动”流程重启网站。
-
-若端口能够连接但测试仍失败，回到 Supabase 的 `Connect` 页面核对项目地址和密码。密码含有 `@`、`#`、`%` 等字符时必须正确进行 URL 编码。不要把完整连接串或数据库密码提交到 Git、截图或聊天中。
-
-## 登录后台
-
-线上登录流程：
-
-1. 打开 [https://sports-tech-intelligence.vercel.app/sign-in](https://sports-tech-intelligence.vercel.app/sign-in)。
-2. 使用其主邮箱已列入生产环境 `ADMIN_EMAILS` 的 Clerk 账号登录；多个管理员邮箱用逗号分隔。
-3. 登录成功后进入 `/dashboard`，确认页面显示角色为 `ADMIN`。
-4. 点击 `Admin Console`，或再打开 `/admin`。
-
-本地登录使用 [http://localhost:3000/sign-in](http://localhost:3000/sign-in)，规则相同。没有 ADMIN 权限的已登录用户会留在 `/dashboard`，无法进入后台。当前实现会给白名单邮箱授予 ADMIN，但从 `ADMIN_EMAILS` 移除邮箱后不会自动撤销数据库中已有的 ADMIN 角色，这是待修复项。
-
-## 后台运行与发布流程
-
-1. **添加来源**：进入 `/admin/sources`，填写名称、RSS URL 等并启用。首次建议只启用少量来源，方便核对采集结果。
-2. **采集内容**：保持开发服务器运行，在另一个 PowerShell 窗口进入项目目录并执行下面的采集命令。
-3. **检查结果**：查看终端中的新增、重复、失败计数，以及 `/admin/failures`。标记日志已解决只是更新状态，不会自动重试。
-4. **人工审核**：在 `/admin/articles` 筛选 DRAFT，检查原文、标题、正文、图片与摘要；编辑后将状态改为 PUBLISHED。
-5. **确认展示**：打开首页、文章页、分类和搜索，确认刚发布的文章可被找到。
-6. **日常维护**：定期处理草稿和失败日志，停用失效来源，需要时补充 SEO 元数据。
-
-### 后台操作对应的前端反馈
-
-| 后台操作 | 前端预期结果 |
-| --- | --- |
-| 将文章改为 `PUBLISHED` | 文章可出现在首页、文章详情、分类、标签和搜索结果中 |
-| 将文章改为 `DRAFT`、`REJECTED` 或 `ARCHIVED` | 文章不再进入公开文章列表 |
-| 编辑标题、摘要、正文或 SEO 字段 | 文章详情页及相应搜索引擎元数据更新 |
-| 新增并启用 RSS 来源 | 下次采集时读取该来源；不会立即自动出现公开文章 |
-| 停用来源 | 后续批次不再从该来源采集，已有文章不受影响 |
-| 标记失败记录为已解决 | 只更新失败日志状态，不会自动重试采集 |
-| 新增 Newsletter 订阅者 | 后台订阅者列表更新；当前版本不会自动发送邮件 |
-
-每次发布后至少检查首页、对应文章页、分类页和搜索结果。若后台保存成功但前端未显示，先确认文章状态为 `PUBLISHED`，再检查数据库连接和服务器日志。
-
-加载 `.env` 并触发采集：
-
-```powershell
-node --env-file=.env scripts/ingest-rss.cjs
-```
-
-为缺少元数据的文章执行 SEO 回填，每次 25 篇：
-
-```powershell
-node --env-file=.env scripts/generate-seo.cjs 25
-```
-
-这些脚本通过 HTTP POST 调用 `NEXT_PUBLIC_SITE_URL`，所以目标网站必须已启动。它们会修改目标网站所连接的数据库；首次本地试用应将地址设为 `http://localhost:3000` 并使用开发数据库。采集和 SEO 回填会调用 AI 服务。
-
-可选：批量导入仓库内预设来源与分类：
-
-```powershell
-node --env-file=.env --import tsx scripts/seed-sports-tech-sources.ts
-```
-
-预设脚本会启用新增来源，跳过已有且具备 RSS URL 的来源；列表中的 Feed 地址未在此次逐一验证。导入后应在后台筛选需要启用的来源。
-
-`npm run ingest`、`npm run seo`、`npm run seed:sources` 也有对应脚本，但没有显式的 `.env` 加载参数。为避免独立脚本漏读网站地址或密钥，首次使用优先采用上面的显式加载命令。
-
-## 页面与接口
+### Public
 
 | 路径 | 用途 |
 | --- | --- |
-| `/` | 最新已发布文章 |
-| `/article/[slug]` | 文章详情与 AI 摘要 |
-| `/category`、`/category/[slug]` | 分类目录、分类文章 |
-| `/tag/[slug]` | 标签文章 |
-| `/search?q=关键词` | 关键词搜索 |
-| `/newsletter` | 登记订阅邮箱，暂不自动发送邮件 |
-| `/privacy` | 隐私说明 |
-| `/sign-in`、`/sign-up`、`/dashboard` | 登录、注册、账号面板 |
-| `/admin` | 管理总览 |
-| `/admin/articles`、`/admin/articles/[id]` | 文章列表与编辑 |
-| `/admin/sources`、`/admin/categories`、`/admin/tags` | 来源、分类、标签管理 |
-| `/admin/newsletter`、`/admin/failures` | 订阅者、失败记录 |
-| `/sitemap.xml`、`/robots.txt`、`/feed.xml` | 搜索引擎与 RSS 阅读器入口 |
+| `/` | Today、Top 5、Latest 15 与 Topic 入口 |
+| `/latest` | 可按 Topic 和 Today / This Week / All 筛选的完整情报流 |
+| `/topics`、`/topics/[slug]` | 6 个主分类及各自的最新情报与相关 Tags |
+| `/search` | Company、Product、Research、Intelligence 搜索 |
+| `/companies`、`/companies/[slug]` | 公司目录与详情 |
+| `/products`、`/products/[slug]` | 产品目录、Evidence 与 Demo Request |
+| `/research`、`/research/[slug]` | Research 搜索、筛选和详情 |
+| `/compare` | Free/Pro 产品比较 |
+| `/pricing` | Free 与 Pro 定价 |
+| `/article/[slug]` | Intelligence 文章详情 |
 
-| 接口 | 方法 | 说明 |
-| --- | --- | --- |
-| `/api/cron/ingest-rss` | GET / POST | 采集最久未检查的来源，生成草稿；默认每次 3 个来源、每个最多 2 篇，可传 `sourceLimit` 和 `itemsPerSource`（上限均为 10） |
-| `/api/cron/generate-seo-metadata?batchSize=25` | GET / POST | SEO 回填，可传 `overwrite=true` 覆盖已有数据 |
-| `/api/webhooks/clerk` | POST | Clerk 用户事件同步，校验 Webhook 签名 |
+### User
 
-Cron 请求必须携带 `Authorization: Bearer <CRON_SECRET>`。未配置 `CRON_SECRET` 时接口返回 503，密钥不匹配时返回 401。Vercel Cron 和上面的 Node 脚本都会使用环境变量构造该请求头。
+| 路径 | 用途 |
+| --- | --- |
+| `/dashboard` | 个性化 Dashboard 和方案状态 |
+| `/watchlist` | 已关注公司和产品 |
+| `/alerts` | Watchlist 变化通知 |
+| `/settings/billing` | Subscription 与 Billing Portal |
+| `/billing/success` | Checkout 完成页 |
 
-## 定时运行与部署
+### Vendor
 
-`vercel.json` 当前按 Vercel Hobby 套餐限制安排为每天执行一次：RSS 在 UTC 00:00（北京时间 08:00）执行，SEO 在 UTC 01:30（北京时间 09:30）执行。RSS 每次处理最久未检查的 3 个来源并自动轮换，避免单次处理全部来源导致 Vercel 函数超时。
+| 路径 | 用途 |
+| --- | --- |
+| `/companies/[slug]/claim` | 提交 Company Claim |
+| `/vendor` | Vendor Dashboard |
+| `/vendor/companies/[slug]` | 编辑公司资料 |
+| `/vendor/products/[slug]` | 编辑产品官方信息 |
+| `/vendor/leads` | 查看所属公司的 Leads |
 
-两个 Cron 路由同时支持 GET 和 POST。Vercel Cron 使用 GET，手动脚本使用 POST，二者共用相同的 `CRON_SECRET` 校验和任务逻辑。[Vercel Cron 官方说明](https://vercel.com/docs/cron-jobs)
+### Admin
 
-部署后仍需在 Vercel 的 Settings → Cron Jobs 和 Logs 中确认任务实际触发成功。若升级到付费计划并需要更及时的内容，可以再提高执行频率。
+Admin 包含 Articles、Sources、Categories、Tags、Failures、Newsletter，以及：
 
-需要立即采集时也可手动运行上述脚本。若用 Windows 任务计划程序，填写 Node 可执行文件完整路径、参数 `--env-file=.env scripts/ingest-rss.cjs`，起始目录填写项目绝对路径；目标网站必须可访问。机器上的 Node 路径可用 `(Get-Command node).Source` 查看。
+- `/admin/research`
+- `/admin/evidence`
+- `/admin/claims`
+- `/admin/leads`
 
-部署准备流程：
+所有 Admin 写入、Claim 审核、Vendor 编辑和 Lead 查询均执行服务端授权。
 
-1. 在 Vercel 导入 GitHub 仓库，填写生产环境变量和正式网站地址。
-2. 通过受控发布流程对目标数据库执行 `npx prisma migrate deploy`。
-3. 构建时运行 `npm run prisma:generate` 和 `npm run build`。
-4. 配置生产 Clerk 应用；如需 Webhook，同步地址为正式域名下的 `/api/webhooks/clerk`。
-5. 完成下面 P0 项目后，验证登录、来源管理、采集、审核发布及定时任务日志。
+## RSS 与 Intelligence 运维
 
-### 线上运行检查
-
-Vercel 页面正常但 Supabase 暂停时，网站仍可能返回页面外壳，同时数据库查询报错。因此需要分别检查应用和数据库：
+RSS 先把新内容保存为 Draft，再执行重复检测和一次严格校验的 structured AI 处理。处理成功且 `importanceScore >= 35` 的自动采集内容可以安全发布；AI 失败、低分或重复内容不会进入公开 Feed。只有 Published、非重复且未隐藏的 Article 会被公开查询读取。
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing https://sports-tech-intelligence.vercel.app/ -TimeoutSec 30 | Select-Object StatusCode
+npm run seed:sources
+npm run ingest
+npm run seo
+npm run backfill:intelligence -- --limit=5
+```
 
+`backfill:intelligence` 只选择最近 30 天中未处理、缺少 AI Summary 或缺少 Why It Matters 的文章，单次最多 100 条。
+
+也可以直接调用受 `CRON_SECRET` 保护的接口：
+
+| 接口 | 方法 | 用途 |
+| --- | --- | --- |
+| `/api/cron/ingest-rss` | GET/POST | RSS 采集、重复检测、AI 处理与安全发布 |
+| `/api/cron/generate-seo-metadata` | GET/POST | SEO metadata 回填 |
+| `/api/webhooks/clerk` | POST | Clerk 用户同步 |
+| `/api/webhooks/stripe` | POST | Stripe subscription 同步 |
+
+连接 Supabase 失败时，先确认项目没有因闲置暂停，再执行：
+
+```powershell
 npx tsx scripts/test-supabase.ts
 ```
 
-第一条应返回 `200`，第二条应显示 `Supabase OK`。线上登录页为 `/sign-in`；未登录访问受保护路由目前可能看到 404。
-
-## 常用开发命令
+## 开发与发布检查
 
 ```powershell
-npm run dev
 npm run typecheck
+npm test
 npm run build
-npm run start
-npm run prisma:generate
-npm run prisma:migrate
+npx prisma validate
+npx prisma migrate status
 ```
 
-`npm run start` 需要先成功构建。仓库当前没有专门的 lint、test、format 或 CI 脚本。
+仓库目前没有 lint、format 或 CI script。`npm test` 使用 Node Test Runner，覆盖 Pro entitlement、套餐限制、Stripe subscription lifecycle，以及 Daily Feed 分类、标题相似度、时间窗口和阈值规则。
 
-## 目录结构
+当前已验证：
+
+- TypeScript typecheck 通过
+- Commercial 与 Daily Feed tests 7/7 通过
+- Next.js production build 通过
+- Prisma schema、已提交迁移及数据库结构一致
+- Public、Protected、Stripe webhook、Vendor/Lead 数据隔离流程通过
+- Daily Feed 首页、Latest 和 Article Detail 的 375/390px 单栏与 desktop 响应式检查通过
+
+## 数据模型与迁移
+
+V0.7 Daily Feed 在现有 Article/AiSummary 结构上增加：
+
+- `Article.importanceScore`、`isFeatured`、`isHiddenFromFeed`、`processedAt`
+- `AiSummary.whyItMatters`
+- 复用现有 `Category` 作为单一 Primary Category，复用 `AiSummary.keyTakeaways`、`Article.duplicateOfId` 和 Tags
+
+对应非破坏性迁移：
 
 ```text
-app/                 页面、管理后台、API 路由
-src/lib/             Prisma、认证、数据查询、后台操作、SEO
-src/services/        RSS 采集、AI 摘要、SEO 回填
-src/utils/content.ts 内容清洗、URL 处理、slug 与哈希工具
-prisma/              数据模型及迁移
-scripts/             采集入口、来源初始化、诊断与回填工具
-.env.example         环境变量模板
-vercel.json          定时任务配置
-DESIGN_SYSTEM.md     设计规范
+20260919120000_add_daily_intelligence_feed
 ```
 
-## 已知限制与下一步计划
+V0.8 主要新增：
 
-以下为基于本地源码的建议计划，尚未实施，不代表线上已完成验证。
+- `Research`、`ResearchProduct`、`ResearchCompany`、`ResearchTechnology`、`ResearchUseCase`、`ResearchSport`
+- `Evidence`
+- `Subscription`、`StripeEvent`
+- `CompanyClaim`、`CompanyMember`
+- `Lead`
 
-| 优先级 | 工作 | 验收标准 |
-| --- | --- | --- |
-| P0：运行可靠性 | 确认每日 Cron 有成功记录；让脚本在失败时返回非零退出码；增加并发保护与 Supabase 暂停告警 | 调度器能识别失败；重复触发不会重复处理；数据库离线时收到告警 |
-| P0：后台权限与登录 | 在每个后台写入 Server Action 内校验管理员；补齐 Clerk 缺配置行为、管理员撤权和未登录跳转逻辑 | 普通用户直接调用写入操作被拒绝；撤权后不再保留 ADMIN；未登录访问后台跳转到 `/sign-in` |
-| P0：发布分支 | 确认 Vercel 生产分支并统一 `main`、`master` | GitHub 默认分支、Vercel Production Branch 和实际发布提交一致 |
-| P1：采集质量 | 核验预设来源、收紧体育科技相关性筛选、拆分批次与重试；修复 AI 失败后的重处理路径 | 同一文章不重复入库；摘要失败可恢复；每批耗时、失败原因可追踪 |
-| P1：发布闭环 | 增加后台采集/重试入口、预览、批量审核及分页；覆盖关键路径的自动检查 | 管理员能从添加来源到文章发布完成整套操作，且发布后能搜索到文章 |
-| P2：Newsletter | 实现订阅确认、退订、摘要邮件、投递日志及失败处理 | 测试邮箱收到一期摘要，退订后不再收到邮件 |
-| P2：维护与度量 | 增加 CI、任务健康指标、AI 用量统计；统一认证和 AI 接口文档 | 类型检查与构建进入发布检查；可查看任务成功率和调用量；文档与实现一致 |
+对应非破坏性迁移：
 
-已识别的源码依据：`src/lib/admin.ts` 的后台写入函数缺少函数内管理员校验；`src/lib/auth.ts` 目前会授予 ADMIN，但移除白名单邮箱时不会主动降权；Newsletter 订阅操作目前只写数据库；RSS 来源及条目顺序处理，失败重试和批次恢复仍需完善。
+```text
+20260919000000_add_commercial_intelligence
+20260919010000_add_vendor_product_info
+```
 
-建议执行顺序：**先完成 P0，再用少量来源跑通采集 → 审核 → 发布，之后扩大来源并实现邮件发送。**
+## 已知外部依赖
 
-## 许可证
+- Daily Feed AI 处理与 backfill 需要有效的 `AI_API_KEY`；无效或缺失时文章保持 Draft，管理员需从 Failures/命令输出排查。
+- Stripe 真实付款依赖 Dashboard 中的 Product/Price、Webhook 和 Billing Portal 配置。
+- Clerk key 必须来自同一 instance；不匹配会导致认证握手失败。
+- Supabase 免费项目可能因闲置暂停，需要在 Dashboard 恢复。
+- `npm audit` 当前剩余 Next.js 内部 PostCSS 与 Prisma config 的传递依赖告警；彻底消除需要评估 Next.js/Prisma major upgrade，不应直接运行 `npm audit fix --force`。
 
-Private - All Rights Reserved
+## 部署
+
+1. 在 Vercel 配置生产环境变量。
+2. 对目标数据库运行 `npx prisma migrate deploy`。
+3. 配置 Clerk 和 Stripe 的生产 Webhook。
+4. 启用 Stripe Billing Portal。
+5. 运行 `npm run typecheck`、`npm test` 和 `npm run build`。
+6. 验证 public、auth、checkout、billing、claim、vendor 和 lead 流程。
+
+项目地址：
+
+- Website: [sports-tech-intelligence.vercel.app](https://sports-tech-intelligence.vercel.app)
+- Repository: [loooolBean/sports-tech-intelligence](https://github.com/loooolBean/sports-tech-intelligence)
+
+## License
+
+Private — All Rights Reserved

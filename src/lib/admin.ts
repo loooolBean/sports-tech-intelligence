@@ -2,6 +2,9 @@ import { ArticleStatus, SourceType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "./prisma";
 import { slugify } from "../utils/content";
+import { generateAlertsForArticle } from "./alerts";
+import { requireAdminUser } from "./auth";
+import { getIntelligenceCategory } from "./intelligence-feed";
 
 export async function getAdminDashboardStats() {
   const today = new Date();
@@ -15,6 +18,10 @@ export async function getAdminDashboardStats() {
     openFailures,
     newsletterSubscribers,
     articlesToday,
+    research,
+    evidence,
+    pendingClaims,
+    newLeads,
   ] = await prisma.$transaction([
     prisma.article.count({ where: { status: ArticleStatus.PUBLISHED } }),
     prisma.article.count({ where: { status: ArticleStatus.DRAFT } }),
@@ -23,6 +30,10 @@ export async function getAdminDashboardStats() {
     prisma.ingestionFailure.count({ where: { status: "OPEN" } }),
     prisma.newsletterSubscriber.count({ where: { isActive: true } }),
     prisma.article.count({ where: { createdAt: { gte: today } } }),
+    prisma.research.count(),
+    prisma.evidence.count(),
+    prisma.companyClaim.count({ where: { status: "PENDING" } }),
+    prisma.lead.count({ where: { status: "NEW" } }),
   ]);
 
   return {
@@ -33,6 +44,10 @@ export async function getAdminDashboardStats() {
     openFailures,
     newsletterSubscribers,
     articlesToday,
+    research,
+    evidence,
+    pendingClaims,
+    newLeads,
   };
 }
 
@@ -43,6 +58,7 @@ export async function getAdminArticles(status?: ArticleStatus) {
       category: true,
       source: true,
       aiSummary: true,
+      duplicateOf: { select: { id: true, title: true } },
     },
     orderBy: {
       createdAt: "desc",
@@ -70,35 +86,69 @@ export async function getAdminArticle(articleId: string) {
 export async function saveArticleEditorialFields(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const articleId = String(formData.get("articleId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const excerpt = String(formData.get("excerpt") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const seoTitle = String(formData.get("seoTitle") ?? "").trim();
   const seoDescription = String(formData.get("seoDescription") ?? "").trim();
+  const categorySlug = String(formData.get("categorySlug") ?? "").trim();
+  const whyItMatters = String(formData.get("whyItMatters") ?? "").trim();
+  const importanceScore = Number(formData.get("importanceScore") ?? 0);
+  const isFeatured = formData.get("isFeatured") === "on";
+  const isHiddenFromFeed = formData.get("isHiddenFromFeed") === "on";
+  const intelligenceCategory = getIntelligenceCategory(categorySlug);
 
-  if (!articleId || !title) {
-    throw new Error("Article id and title are required.");
+  if (
+    !articleId ||
+    !title ||
+    !intelligenceCategory ||
+    !Number.isInteger(importanceScore) ||
+    importanceScore < 0 ||
+    importanceScore > 100
+  ) {
+    throw new Error("Article id, title, category and an importance score from 0-100 are required.");
   }
 
+  const category = await prisma.category.upsert({
+    where: { slug: intelligenceCategory.slug },
+    create: {
+      name: intelligenceCategory.name,
+      slug: intelligenceCategory.slug,
+      description: intelligenceCategory.description,
+    },
+    update: {
+      name: intelligenceCategory.name,
+      description: intelligenceCategory.description,
+    },
+  });
   const article = await prisma.article.update({
     where: { id: articleId },
     data: {
       title,
       excerpt: excerpt || null,
       body: body || null,
+      categoryId: category.id,
+      importanceScore,
+      isFeatured,
+      isHiddenFromFeed,
+      processedAt: whyItMatters ? new Date() : undefined,
       aiSummary: {
         upsert: {
           create: {
             summary: excerpt || title,
+            whyItMatters: whyItMatters || null,
             keyTakeaways: [],
-            categories: [],
+            categories: [intelligenceCategory.name],
             tags: [],
             seoTitle: seoTitle || title,
             seoDescription: seoDescription || excerpt || title,
             model: "manual",
           },
           update: {
+            whyItMatters: whyItMatters || null,
+            categories: [intelligenceCategory.name],
             seoTitle: seoTitle || title,
             seoDescription: seoDescription || excerpt || title,
           },
@@ -116,6 +166,10 @@ export async function saveArticleEditorialFields(formData: FormData) {
   });
 
   revalidatePath(`/article/${article.slug}`);
+  revalidatePath("/");
+  revalidatePath("/latest");
+  revalidatePath("/topics");
+  revalidatePath(`/topics/${intelligenceCategory.slug}`);
   revalidatePath(`/category/${article.category.slug}`);
   revalidatePath("/admin/articles");
   revalidatePath("/sitemap.xml");
@@ -124,6 +178,7 @@ export async function saveArticleEditorialFields(formData: FormData) {
 export async function updateArticleStatus(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const articleId = String(formData.get("articleId") ?? "");
   const status = String(formData.get("status") ?? "") as ArticleStatus;
 
@@ -135,6 +190,7 @@ export async function updateArticleStatus(formData: FormData) {
     where: { id: articleId },
     data: { status },
     select: {
+      id: true,
       slug: true,
       category: {
         select: {
@@ -144,7 +200,13 @@ export async function updateArticleStatus(formData: FormData) {
     },
   });
 
+  if (status === ArticleStatus.PUBLISHED) {
+    await generateAlertsForArticle(article.id);
+  }
+
   revalidatePath("/");
+  revalidatePath("/latest");
+  revalidatePath("/topics");
   revalidatePath("/sitemap.xml");
   revalidatePath(`/article/${article.slug}`);
   revalidatePath(`/category/${article.category.slug}`);
@@ -162,6 +224,7 @@ export async function getAdminSources() {
 export async function createSource(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const name = String(formData.get("name") ?? "").trim();
   const rssUrl = String(formData.get("rssUrl") ?? "").trim();
   const websiteUrl = String(formData.get("websiteUrl") ?? "").trim();
@@ -189,6 +252,7 @@ export async function createSource(formData: FormData) {
 export async function toggleSourceStatus(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const sourceId = String(formData.get("sourceId") ?? "");
   const isActive = String(formData.get("isActive") ?? "") === "true";
 
@@ -215,6 +279,7 @@ export async function getAdminFailures() {
 export async function resolveFailure(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const failureId = String(formData.get("failureId") ?? "");
 
   await prisma.ingestionFailure.update({
@@ -366,6 +431,7 @@ export async function getAdminCategories() {
 export async function saveCategory(formData: FormData) {
   "use server";
 
+  await assertAdminAction();
   const categoryId = String(formData.get("categoryId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -421,4 +487,12 @@ function getHostname(value: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+async function assertAdminAction() {
+  const user = await requireAdminUser();
+  if (!user) {
+    throw new Error("Administrator access is required.");
+  }
+  return user;
 }

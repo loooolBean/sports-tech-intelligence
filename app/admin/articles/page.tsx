@@ -34,6 +34,16 @@ export default async function AdminArticlesPage({ searchParams }: AdminArticlesP
                 <p className="overline text-accent">
                   {article.status} · {article.category.name} · {article.source.name}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-caption text-text-tertiary">
+                  <span>Importance {article.importanceScore}/100</span>
+                  <span>·</span>
+                  <span>{article.publishedAt.toLocaleDateString("en-US")}</span>
+                  {article.isFeatured && <span>· Featured</span>}
+                  {article.isHiddenFromFeed && <span>· Hidden from feed</span>}
+                  {article.duplicateOf && (
+                    <span>· Duplicate of “{article.duplicateOf.title}”</span>
+                  )}
+                </div>
                 <h2 className="mt-2 text-h3 text-text-primary">{article.title}</h2>
                 <p className="mt-2 max-w-3xl text-body text-text-secondary">
                   {article.aiSummary?.seoDescription ?? article.excerpt ?? "No description yet."}

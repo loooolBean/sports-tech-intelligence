@@ -14,6 +14,10 @@ export default async function AdminPage() {
     ["Active Sources", stats.activeSources],
     ["Open Failures", stats.openFailures],
     ["Newsletter Subscribers", stats.newsletterSubscribers],
+    ["Research", stats.research],
+    ["Evidence", stats.evidence],
+    ["Pending Claims", stats.pendingClaims],
+    ["New Leads", stats.newLeads],
   ];
 
   return (

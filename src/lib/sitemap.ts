@@ -15,10 +15,13 @@ export interface SitemapData {
   articles: SitemapArticleEntry[];
   categories: SitemapTaxonomyEntry[];
   tags: SitemapTaxonomyEntry[];
+  companies: SitemapArticleEntry[];
+  products: SitemapArticleEntry[];
+  research: SitemapArticleEntry[];
 }
 
 export async function getSitemapData(): Promise<SitemapData> {
-  const [articles, categories, tags] = await prisma.$transaction([
+  const [articles, categories, tags, companies, products, research] = await prisma.$transaction([
     prisma.article.findMany({
       where: {
         status: ArticleStatus.PUBLISHED,
@@ -101,6 +104,9 @@ export async function getSitemapData(): Promise<SitemapData> {
         name: "asc",
       },
     }),
+    prisma.company.findMany({ select: { slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 45000 }),
+    prisma.product.findMany({ select: { slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 45000 }),
+    prisma.research.findMany({ select: { slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 45000 }),
   ]);
 
   const now = new Date();
@@ -115,5 +121,8 @@ export async function getSitemapData(): Promise<SitemapData> {
       slug: tag.slug,
       lastModified: tag.articleTags[0]?.article.updatedAt ?? now,
     })),
+    companies,
+    products,
+    research,
   };
 }

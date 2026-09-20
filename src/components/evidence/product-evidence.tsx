@@ -1,0 +1,14 @@
+import type { EvidenceSourceType, Prisma } from "@prisma/client";
+import Link from "next/link";
+import { EvidenceCard, EVIDENCE_SOURCE_LABELS } from "./evidence-card";
+import { UpgradeCard } from "@/src/components/pro/pro-gate";
+import { evidenceInclude } from "@/src/lib/evidence";
+import type { UserEntitlements } from "@/src/lib/entitlements";
+
+type EvidenceData = Prisma.EvidenceGetPayload<{ include: typeof evidenceInclude }>;
+
+export function ProductEvidence({ productSlug, evidence, counts, entitlements, activeSource }: { productSlug: string; evidence: EvidenceData[]; counts: Record<EvidenceSourceType, number>; entitlements: UserEntitlements; activeSource?: EvidenceSourceType }) {
+  const visible = entitlements.fullEvidence ? evidence : evidence.slice(0, entitlements.evidencePreviewLimit);
+  const sources = Object.keys(EVIDENCE_SOURCE_LABELS) as EvidenceSourceType[];
+  return <section className="border-t border-border"><div className="mx-auto max-w-content px-4 py-14 lg:px-8"><p className="overline">Research context</p><h2 className="mt-2 text-h2 text-text-primary">Evidence</h2><p className="mt-2 max-w-3xl text-body text-text-secondary">Counts reflect indexed sources, not a product score or recommendation.</p><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{sources.map((source) => <div key={source} className="rounded-lg border border-border p-4"><p className="text-caption text-text-tertiary">{EVIDENCE_SOURCE_LABELS[source]}</p><p className="mt-1 text-h1 text-text-primary">{counts[source]}</p></div>)}</div>{entitlements.advancedFilters && <nav className="mt-6 flex flex-wrap gap-2" aria-label="Evidence filters"><Link href={`/products/${productSlug}`} className={`rounded-md border px-3 py-1.5 text-caption ${!activeSource ? "border-accent text-accent" : "border-border text-text-secondary"}`}>All</Link>{sources.map((source) => <Link key={source} href={`/products/${productSlug}?evidence=${source}`} className={`rounded-md border px-3 py-1.5 text-caption ${activeSource === source ? "border-accent text-accent" : "border-border text-text-secondary"}`}>{EVIDENCE_SOURCE_LABELS[source]}</Link>)}</nav>}<div className="mt-6 grid gap-4 lg:grid-cols-2">{visible.map((item) => <EvidenceCard key={item.id} evidence={item} fullDetails={entitlements.fullEvidence} />)}</div>{evidence.length === 0 && <p className="mt-6 rounded-lg border border-dashed border-border p-6 text-body text-text-secondary">No evidence has been indexed for this product yet. This does not mean that evidence does not exist.</p>}{!entitlements.fullEvidence && evidence.length > 0 && <div className="mt-6"><UpgradeCard title="Unlock full evidence" description={`Review ${evidence.length > visible.length ? `all ${evidence.length} records and ` : ""}structured findings, populations and metrics.`} /></div>}</div></section>;
+}

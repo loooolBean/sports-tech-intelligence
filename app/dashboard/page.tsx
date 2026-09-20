@@ -1,56 +1,36 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUserProfile } from "../../src/lib/auth";
+import { formatDistanceToNow } from "date-fns";
+import { AlertList } from "@/src/components/alerts/alert-list";
+import { SearchForm } from "@/src/components/intelligence/search-form";
+import { WatchButton } from "@/src/components/watchlist/watch-button";
+import { getCurrentUserProfile } from "@/src/lib/auth";
+import { getDashboardData } from "@/src/lib/dashboard";
+import { getUserEntitlements } from "@/src/lib/entitlements";
+import { ProBadge } from "@/src/components/pro/pro-gate";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Your Intelligence Dashboard", robots: { index: false, follow: false } };
 
 export default async function DashboardPage() {
   const user = await getCurrentUserProfile();
-
-  if (!user) {
-    redirect("/sign-in");
-  }
-
-  return (
-    <main className="min-h-screen bg-bg">
-      <section className="mx-auto max-w-content px-4 py-12 lg:px-8">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="text-h1 text-text-primary">Dashboard</h1>
-          <p className="mt-3 text-body-lg text-text-secondary">
-            Signed in as {user.email}. Your current role is {user.role}.
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="card-surface p-6">
-              <h2 className="text-h3 text-text-primary">Newsletter Preferences</h2>
-              <p className="mt-2 text-body text-text-secondary">
-                Subscribe to the daily sports technology briefing.
-              </p>
-              <Link
-                className="mt-5 inline-flex rounded-md border border-border px-4 py-2 text-caption font-medium text-text-primary transition-colors hover:border-accent hover:text-accent"
-                href="/newsletter"
-              >
-                Manage newsletter
-              </Link>
-            </div>
-
-            {user.role === "ADMIN" && (
-              <div className="card-surface p-6">
-                <h2 className="text-h3 text-text-primary">Admin Console</h2>
-                <p className="mt-2 text-body text-text-secondary">
-                  Manage articles, sources, subscribers, and ingestion failures.
-                </p>
-                <Link
-                  className="mt-5 inline-flex rounded-md bg-accent px-4 py-2 text-caption font-medium text-white transition-colors hover:bg-accent-hover"
-                  href="/admin"
-                >
-                  Open Admin Console
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-    </main>
-  );
+  if (!user) redirect("/sign-in?redirect_url=%2Fdashboard");
+  const [data, entitlements] = await Promise.all([getDashboardData(user.id), getUserEntitlements(user.id)]);
+  const watchCount = data.watchlist.companies.length + data.watchlist.products.length + data.watchlist.technologies.length;
+  const activity = [
+    ...data.watchlist.companies.map((item) => ({ key: `company-${item.companyId}`, name: item.company.name, href: `/companies/${item.company.slug}`, type: "Company", unread: item.unreadActivity })),
+    ...data.watchlist.products.map((item) => ({ key: `product-${item.productId}`, name: item.product.name, href: `/products/${item.product.slug}`, type: item.product.company.name, unread: item.unreadActivity })),
+  ].slice(0, 6);
+  return <main className="min-h-screen bg-bg"><header className="border-b border-border"><div className="mx-auto max-w-content px-4 py-12 lg:px-8"><p className="overline">Personal workspace</p><h1 className="mt-2 text-h1 text-text-primary">Your Intelligence Dashboard</h1><p className="mt-3 text-body-lg text-text-secondary">Track the companies and products you care about.</p><div className="mt-7 max-w-2xl"><SearchForm compact /></div></div></header>
+    <section className="mx-auto max-w-content px-4 py-10 lg:px-8"><div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-bg-card p-4"><div><p className="text-caption text-text-tertiary">Your Plan</p><div className="mt-1 flex items-center gap-2 text-h3 text-text-primary">{entitlements.plan === "PRO" ? <>Pro <ProBadge /></> : "Free"}</div></div>{entitlements.plan === "FREE" && <Link href="/pricing" className="text-caption font-semibold text-accent">Upgrade to Pro →</Link>}</div><div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">{[["Watched companies", data.watchlist.companies.length], ["Watched products", data.watchlist.products.length], ["Watched technologies", data.watchlist.technologies.length], ["Unread alerts", data.unreadAlerts]].map(([label, value]) => <div key={String(label)} className="bg-bg-card p-5"><p className="text-2xl font-bold text-text-primary">{value}</p><p className="mt-1 text-caption text-text-tertiary">{label}</p></div>)}</div>
+      {!watchCount && <section className="mt-10 rounded-lg border border-border bg-bg-elevated/40 p-7"><h2 className="text-h2 text-text-primary">Build your intelligence feed</h2><ol className="mt-4 grid gap-3 text-body text-text-secondary sm:grid-cols-3"><li><span className="mr-2 font-semibold text-accent">1.</span>Search sports technology</li><li><span className="mr-2 font-semibold text-accent">2.</span>Watch companies and products</li><li><span className="mr-2 font-semibold text-accent">3.</span>Get intelligence alerts</li></ol><div className="mt-6 flex flex-wrap gap-3"><Link href="/companies" className="rounded-lg bg-text-primary px-5 py-2.5 text-caption font-semibold text-bg">Explore companies</Link><Link href="/products" className="rounded-lg border border-border bg-bg-card px-5 py-2.5 text-caption font-semibold text-text-primary">Explore products</Link></div></section>}
+      <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.25fr]"><section><div className="flex items-center justify-between"><h2 className="text-h2 text-text-primary">Watchlist Activity</h2><Link href="/watchlist" className="text-caption font-semibold text-accent">View watchlist →</Link></div>{activity.length ? <div className="mt-5 divide-y divide-border rounded-lg border border-border bg-bg-card">{activity.map((item) => <Link key={item.key} href={item.href} className="flex items-center justify-between gap-3 p-4 hover:bg-bg-elevated"><div><p className="font-semibold text-text-primary">{item.name}</p><p className="mt-1 text-caption text-text-tertiary">{item.type}</p></div><span className={`text-caption font-semibold ${item.unread ? "text-accent" : "text-text-tertiary"}`}>{item.unread ? `${item.unread} new` : "Up to date"}</span></Link>)}</div> : <p className="mt-5 rounded-lg border border-dashed border-border p-6 text-body text-text-secondary">Your watchlist activity will appear here.</p>}</section>
+        <section><div className="flex items-center justify-between"><h2 className="text-h2 text-text-primary">Recent Alerts</h2><Link href="/alerts" className="text-caption font-semibold text-accent">View all alerts →</Link></div><div className="mt-5"><AlertList alerts={data.recentAlerts} compact /></div></section></div>
+      {!watchCount && data.suggestedCompanies.length > 0 && <section className="mt-12"><h2 className="text-h2 text-text-primary">Suggested Companies to Watch</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{data.suggestedCompanies.map((company) => <article key={company.id} className="card-surface flex flex-col p-5"><Link href={`/companies/${company.slug}`} className="text-h3 text-text-primary hover:text-accent">{company.name}</Link><p className="mt-2 line-clamp-3 text-body text-text-secondary">{company.shortDescription}</p><div className="mt-auto pt-5"><WatchButton entityId={company.id} entityType="company" watching={false} returnPath="/dashboard" /></div></article>)}</div></section>}
+      <section className="mt-12"><div className="flex items-center justify-between"><div><p className="overline">Your feed</p><h2 className="mt-2 text-h2 text-text-primary">Relevant Intelligence</h2></div><Link href="/search?type=articles" className="text-caption font-semibold text-accent">Browse all →</Link></div><div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{data.relevantArticles.map((article) => <Link key={article.id} href={`/article/${article.slug}`} className="card-surface p-5"><p className="text-caption text-text-tertiary">{article.source.name} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}</p><h3 className="mt-2 text-h3 text-text-primary">{article.title}</h3><p className="mt-2 line-clamp-3 text-body text-text-secondary">{article.excerpt ?? article.aiSummary?.summary}</p></Link>)}</div></section>
+      {entitlements.plan === "PRO" && data.relevantResearch.length > 0 && <section className="mt-12"><div className="flex items-center justify-between"><h2 className="text-h2 text-text-primary">Research Updates</h2><Link href="/research" className="text-caption font-semibold text-accent">Browse research →</Link></div><div className="mt-5 grid gap-4 md:grid-cols-2">{data.relevantResearch.map((research) => <Link key={research.id} href={`/research/${research.slug}`} className="card-surface p-5"><p className="text-caption text-text-tertiary">{research.studyType.replaceAll("_", " ")} · {research.publicationYear ?? "Year unknown"}</p><h3 className="mt-2 text-h3 text-text-primary">{research.title}</h3></Link>)}</div></section>}
+      {user.role === "ADMIN" && <div className="mt-10 border-t border-border pt-6"><Link href="/admin" className="text-caption font-semibold text-accent">Open Admin Console →</Link></div>}
+    </section>
+  </main>;
 }

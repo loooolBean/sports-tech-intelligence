@@ -1,10 +1,17 @@
 import { JSDOM } from "jsdom";
+import { getEditorialImageUrl } from "../utils/images";
 import { Readability } from "@mozilla/readability";
 import Parser from "rss-parser";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { hashContent, normalizeUrl, slugify, toDateOrNow, truncate } from "../utils/content";
 import { prisma as defaultPrisma } from "../lib/prisma";
 import { ArticleSummarizationService } from "./articleSummarizationService";
+import { generateAlertsForArticle } from "../lib/alerts";
+import {
+  areIntelligenceTitlesSimilar,
+  AUTO_PUBLISH_MINIMUM_SCORE,
+} from "../lib/intelligence-feed";
+import type { ArticleSummaryResult } from "./articleSummarizationService";
 
 type FeedItem = Parser.Item & {
   "content:encoded"?: string;
@@ -159,6 +166,22 @@ export class RssIngestionService {
     const category = await this.resolveCategory(input.defaultCategorySlug ?? "Uncategorized");
     const author = await this.resolveAuthor(item.creator ?? (item as Record<string, unknown>).author as string | null | undefined);
     const slug = await this.createUniqueSlug(item.title);
+    const publishedAt = toDateOrNow(item.isoDate ?? item.pubDate);
+    const nearbyArticles = await this.db.article.findMany({
+      where: {
+        duplicateOfId: null,
+        publishedAt: {
+          gte: new Date(publishedAt.getTime() - 48 * 60 * 60 * 1000),
+          lte: new Date(publishedAt.getTime() + 48 * 60 * 60 * 1000),
+        },
+      },
+      select: { id: true, title: true },
+      orderBy: { publishedAt: "asc" },
+      take: 80,
+    });
+    const duplicateOf = nearbyArticles.find((candidate) =>
+      areIntelligenceTitlesSimilar(item.title!, candidate.title),
+    );
 
     const article = await this.db.article.create({
       data: {
@@ -174,19 +197,32 @@ export class RssIngestionService {
         excerpt: truncate(extracted.content.replace(/\s+/g, " "), 280),
         body: extracted.content,
         contentHash,
-        publishedAt: toDateOrNow(item.isoDate ?? item.pubDate),
-        status: input.autoPublish ? "PUBLISHED" : "DRAFT",
+        publishedAt,
+        status: "DRAFT",
+        duplicateOfId: duplicateOf?.id,
       },
     });
 
+    if (duplicateOf) {
+      return false;
+    }
+
+    let published = false;
     try {
-      await this.enrichArticleWithAi({
+      const intelligence = await this.processArticleWithAi({
         articleId: article.id,
         title: item.title,
         content: extracted.content,
         sourceName: source.name,
-        publishedAt: toDateOrNow(item.isoDate ?? item.pubDate),
+        publishedAt,
       });
+      if (input.autoPublish && intelligence.importanceScore >= AUTO_PUBLISH_MINIMUM_SCORE) {
+        await this.db.article.update({
+          where: { id: article.id },
+          data: { status: "PUBLISHED" },
+        });
+        published = true;
+      }
     } catch (error) {
       await this.logFailure({
         sourceId: input.sourceId,
@@ -197,24 +233,42 @@ export class RssIngestionService {
       });
     }
 
+    if (published) {
+      try {
+        await generateAlertsForArticle(article.id, this.db);
+      } catch (error) {
+        await this.logFailure({
+          sourceId: input.sourceId,
+          url: item.link,
+          stage: "alert_generation",
+          error,
+          payload: { articleId: article.id },
+        });
+      }
+    }
+
     return true;
   }
 
-  private async enrichArticleWithAi(input: {
+  async processArticleWithAi(input: {
     articleId: string;
     title: string;
     content: string;
     sourceName: string;
     publishedAt: Date;
-  }): Promise<void> {
+    relatedCompanies?: string[];
+    relatedProducts?: string[];
+  }): Promise<ArticleSummaryResult> {
     const summary = await this.summarizer.summarize({
       title: input.title,
       content: input.content,
       sourceName: input.sourceName,
       publishedAt: input.publishedAt,
+      relatedCompanies: input.relatedCompanies,
+      relatedProducts: input.relatedProducts,
     });
 
-    const category = await this.resolveCategory(summary.categories[0] ?? "Uncategorized");
+    const category = await this.resolveCategory(summary.primaryCategory);
 
     // Use sequential operations instead of interactive transaction
     // to avoid pgbouncer "Transaction not found" errors on Supabase
@@ -223,6 +277,8 @@ export class RssIngestionService {
         data: {
           categoryId: category.id,
           excerpt: truncate(summary.summary.replace(/\s+/g, " "), 280),
+          importanceScore: summary.importanceScore,
+          processedAt: new Date(),
         },
       });
 
@@ -231,8 +287,9 @@ export class RssIngestionService {
         create: {
           articleId: input.articleId,
           summary: summary.summary,
+          whyItMatters: summary.whyItMatters,
           keyTakeaways: summary.keyTakeaways,
-          categories: summary.categories,
+          categories: [summary.primaryCategory],
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
@@ -241,8 +298,9 @@ export class RssIngestionService {
         },
         update: {
           summary: summary.summary,
+          whyItMatters: summary.whyItMatters,
           keyTakeaways: summary.keyTakeaways,
-          categories: summary.categories,
+          categories: [summary.primaryCategory],
           tags: summary.tags,
           seoTitle: summary.seoTitle,
           seoDescription: summary.seoDescription,
@@ -273,6 +331,7 @@ export class RssIngestionService {
           update: {},
         });
       }
+    return summary;
   }
 
   private async extractArticle(url: string, item: FeedItem): Promise<{ content: string; canonicalUrl?: string; imageUrl?: string }> {
@@ -284,7 +343,7 @@ export class RssIngestionService {
       return {
         content: this.htmlToText(feedContent),
         canonicalUrl: url,
-        imageUrl: feedImage || this.extractImageFromHtml(feedContent),
+        imageUrl: getEditorialImageUrl(feedImage || this.extractImageFromHtml(feedContent)) ?? undefined,
       };
     }
 
@@ -314,7 +373,7 @@ export class RssIngestionService {
     // Extract image from og:image or first image in content
     const ogImage = dom.window.document.querySelector("meta[property='og:image']")?.getAttribute("content");
     const firstImage = dom.window.document.querySelector("article img, .article-content img, main img")?.getAttribute("src");
-    const imageUrl = feedImage || ogImage || firstImage || this.extractImageFromHtml(feedContent ?? "");
+    const imageUrl = getEditorialImageUrl(feedImage || ogImage || firstImage || this.extractImageFromHtml(feedContent ?? "")) ?? undefined;
 
     return { content, canonicalUrl, imageUrl };
   }

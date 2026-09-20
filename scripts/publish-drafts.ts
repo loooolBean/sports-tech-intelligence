@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { prisma } from "../src/lib/prisma";
+import { generateAlertsForArticle } from "../src/lib/alerts";
 
 async function main() {
   // Find draft articles that have AI summaries with SEO metadata
@@ -38,6 +39,7 @@ async function main() {
         where: { id: draft.id },
         data: { status: "PUBLISHED" },
       });
+      await generateAlertsForArticle(draft.id);
       published++;
       console.log(`  Published: [${draft.source.name}] ${draft.title.substring(0, 70)}`);
     } catch (e: any) {

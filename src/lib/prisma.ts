@@ -19,8 +19,10 @@ let reconnecting: Promise<void> | null = null;
 
 function isRetryableDatabaseError(error: unknown): boolean {
   return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    RETRYABLE_DATABASE_CODES.has(error.code)
+    (error instanceof Prisma.PrismaClientKnownRequestError &&
+      RETRYABLE_DATABASE_CODES.has(error.code)) ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    (error instanceof Error && error.message.includes("Can't reach database server"))
   );
 }
 

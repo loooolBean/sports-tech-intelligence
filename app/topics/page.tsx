@@ -16,22 +16,24 @@ export default async function TopicsPage() {
   return (
     <main className="min-h-screen bg-bg">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-wide px-4 py-9 lg:px-8">
-          <h1 className="font-display text-[2.6rem] font-semibold leading-none tracking-[-0.025em] text-text-primary sm:text-5xl">Topics</h1>
-          <p className="mt-3 max-w-2xl text-body text-text-secondary">Coverage organized by the main areas of sports technology.</p>
+        <div className="mobile-safe-x mx-auto max-w-wide pb-7 pt-8 sm:py-10 lg:px-8">
+          <p className="editorial-kicker">Explore the field</p>
+          <h1 className="mt-3 font-display text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.04em] text-text-primary sm:text-6xl">Topics</h1>
+          <p className="mt-4 max-w-2xl text-[1rem] leading-7 text-text-secondary sm:text-body-lg">Follow the technologies, research and businesses changing modern sport.</p>
         </div>
       </header>
 
-      <section className="mx-auto max-w-wide px-4 py-6 lg:px-8">
-        {topics.map((topic) => (
-          <article key={topic.slug} className="grid gap-6 border-b border-border py-8 first:pt-2 md:grid-cols-[minmax(15rem,0.8fr)_minmax(0,1.2fr)] md:gap-12">
-            <div>
+      <section className="mobile-safe-x mx-auto max-w-wide py-4 sm:py-6 lg:px-8">
+        {topics.map((topic, index) => (
+          <article key={topic.slug} className="grid gap-5 border-b border-border py-7 md:grid-cols-[2.5rem_minmax(15rem,0.8fr)_minmax(0,1.2fr)] md:gap-8 md:py-9">
+            <span className="text-[0.68rem] font-bold tracking-[0.1em] text-accent">0{index + 1}</span>
+            <div className="-mt-1 md:mt-0">
               <h2 className="font-display text-[1.75rem] font-semibold leading-tight text-text-primary">
                 <Link href={`/topics/${topic.slug}`} className="hover:underline">{topic.name}</Link>
               </h2>
               <p className="mt-3 max-w-md text-body leading-7 text-text-secondary">{topic.description}</p>
             </div>
-            <div>
+            <div className="md:col-start-3">
               <p className="text-overline uppercase tracking-[0.09em] text-text-tertiary">Latest</p>
               {topic.articles.length > 0 ? (
                 <ol className="mt-2">

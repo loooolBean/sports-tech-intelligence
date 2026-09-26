@@ -4,10 +4,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Search, Sun, X } from "lucide-react";
 import { cn } from "../src/lib/utils";
 import type { ReactNode } from "react";
 import { AlertNavLink } from "../src/components/alerts/alert-nav-link";
+import { PublicAnalytics } from "../src/components/analytics/public-analytics";
 
 const hasClerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
 
@@ -67,15 +68,37 @@ function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { dark, toggle, mounted } = useDarkMode();
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileOpen]);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-bg/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-[68px] max-w-wide items-center justify-between px-4 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-border bg-bg/95 backdrop-blur-md">
+      <div className="mobile-safe-x mx-auto flex h-16 max-w-wide items-center justify-between lg:h-[68px] lg:px-8">
         <Link
           href="/"
-          className="text-[0.78rem] font-bold uppercase leading-[1.05] tracking-[0.12em] text-text-primary"
+          className="tap-target inline-flex items-center gap-2 text-[0.72rem] font-extrabold uppercase leading-[1.05] tracking-[0.13em] text-text-primary sm:text-[0.78rem]"
+          aria-label="Sports Tech Intelligence home"
         >
+          <span className="h-7 w-1 bg-accent" aria-hidden="true" />
+          <span>
           <span className="block">Sports Tech</span>
           <span className="block">Intelligence</span>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
@@ -111,20 +134,23 @@ function Navigation() {
           )}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/search"
-            className="inline-flex px-2 py-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary"
+            className="tap-target inline-flex items-center justify-center gap-2 px-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary"
+            aria-label="Search"
           >
-            Search
+            <Search className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span className="hidden sm:inline">Search</span>
           </Link>
           <button
             onClick={toggle}
-            className="hidden px-2 py-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary sm:inline-flex"
+            className="tap-target hidden items-center justify-center gap-2 px-2 text-caption font-medium text-text-secondary transition-colors hover:text-text-primary sm:inline-flex"
             aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
             title={dark ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {mounted ? (dark ? "Light" : "Dark") : "Theme"}
+            {mounted ? (dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />) : null}
+            <span>{mounted ? (dark ? "Light" : "Dark") : "Theme"}</span>
           </button>
           {hasClerkKey && SignedIn && SignedOut && UserButton ? (
             <>
@@ -154,49 +180,52 @@ function Navigation() {
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-9 w-9 items-center justify-center text-text-secondary transition-colors hover:text-text-primary lg:hidden"
-            aria-label="Toggle menu"
+            className="tap-target flex items-center justify-center text-text-secondary transition-colors hover:text-text-primary lg:hidden"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
           >
-            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-border bg-bg lg:hidden">
-            <nav className="flex flex-col px-4 py-3">
-              {NAV_LINKS.map((link) => (
+        <div id="mobile-navigation" className="absolute inset-x-0 top-full h-[calc(100dvh-4rem)] overflow-y-auto border-b border-border bg-bg lg:hidden">
+          <nav className="mobile-safe-x mx-auto flex max-w-wide flex-col pb-[max(2rem,env(safe-area-inset-bottom))] pt-6">
+              <p className="editorial-kicker mb-3">Explore the intelligence</p>
+              {NAV_LINKS.map((link, index) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "border-b border-border-subtle px-0 py-3 text-sm font-medium transition-colors",
+                    "group flex min-h-14 items-center justify-between border-b border-border py-3 font-display text-[1.65rem] font-semibold leading-none transition-colors",
                     pathname === link.href ||
                       (link.href !== "/" && pathname.startsWith(`${link.href}/`))
                       ? "text-accent"
                       : "text-text-tertiary hover:text-text-secondary"
                   )}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  <span className="font-sans text-[0.65rem] font-semibold tracking-[0.12em] text-text-tertiary">0{index + 1}</span>
                 </Link>
               ))}
-              <Link
-                href="/search"
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary"
-              >
-                Search
-              </Link>
-              <button onClick={toggle} className="border-b border-border-subtle px-0 py-3 text-left text-sm font-medium text-text-secondary">
-                {mounted ? (dark ? "Light mode" : "Dark mode") : "Theme"}
-              </button>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <Link href="/search" onClick={() => setMobileOpen(false)} className="tap-target flex items-center justify-center gap-2 border border-border bg-bg-card px-4 text-sm font-semibold text-text-primary">
+                  <Search className="h-4 w-4" aria-hidden="true" /> Search
+                </Link>
+                <button onClick={toggle} className="tap-target flex items-center justify-center gap-2 border border-border bg-bg-card px-4 text-sm font-semibold text-text-primary">
+                  {mounted && dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+                  {mounted ? (dark ? "Light" : "Dark") : "Theme"}
+                </button>
+              </div>
               {hasClerkKey && SignedOut ? (
                 <SignedOut>
-                  <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary">Sign in</Link>
+                  <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="tap-target mt-3 flex items-center text-sm font-medium text-text-secondary">Sign in</Link>
                 </SignedOut>
               ) : !hasClerkKey ? (
-                <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="border-b border-border-subtle px-0 py-3 text-sm font-medium text-text-secondary">Sign in</Link>
+                <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="tap-target mt-3 flex items-center text-sm font-medium text-text-secondary">Sign in</Link>
               ) : null}
               {hasClerkKey && SignedIn && (
                 <SignedIn>
@@ -237,7 +266,7 @@ function Navigation() {
                   </Link>
                 </SignedIn>
               )}
-            </nav>
+          </nav>
         </div>
       )}
     </header>
@@ -247,7 +276,7 @@ function Navigation() {
 function Footer() {
   return (
     <footer className="border-t border-border bg-bg">
-      <div className="mx-auto max-w-wide px-4 py-10 lg:px-8">
+      <div className="mobile-safe-x mx-auto max-w-wide py-10 lg:px-8">
         <div className="grid gap-7 sm:grid-cols-[1fr_auto] sm:items-start">
           <div>
             <p className="text-sm font-semibold text-text-primary">Sports Tech Intelligence</p>
@@ -274,6 +303,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
         <Navigation />
         {children}
         <Footer />
+        <PublicAnalytics />
       </>
     );
   }
@@ -283,6 +313,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
       <Navigation />
       {children}
       <Footer />
+      <PublicAnalytics />
     </ClerkProvider>
   );
 }

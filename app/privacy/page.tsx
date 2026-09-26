@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com";
-  const lastUpdated = "June 9, 2026";
+  const lastUpdated = "September 20, 2026";
 
   return (
     <main className="min-h-screen bg-bg">
@@ -71,10 +71,7 @@ export default function PrivacyPage() {
                 <strong>Clerk</strong> — authentication and user management
               </li>
               <li>
-                <strong>Google Analytics</strong> — site traffic analysis
-              </li>
-              <li>
-                <strong>Google AdSense</strong> — advertising (when enabled)
+                <strong>Vercel Web Analytics</strong> — anonymous public-page traffic analysis
               </li>
               <li>
                 <strong>Vercel</strong> — hosting and server infrastructure
@@ -143,4 +140,3 @@ export default function PrivacyPage() {
     </main>
   );
 }
-

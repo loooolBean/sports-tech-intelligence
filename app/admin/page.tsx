@@ -32,6 +32,9 @@ export default async function AdminPage() {
         ))}
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
+        <Link className="rounded-md bg-text-primary px-4 py-2 text-caption font-medium text-bg transition-colors hover:opacity-90" href="/admin/ops">
+          Open Operations
+        </Link>
         <Link className="rounded-md bg-accent px-4 py-2 text-caption font-medium text-white transition-colors hover:bg-accent-hover" href="/admin/articles">
           Review Articles
         </Link>

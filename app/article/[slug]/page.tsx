@@ -43,16 +43,16 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
       <article>
         <header className="border-b border-border">
-          <div className="mx-auto max-w-5xl px-4 py-8 sm:py-10 lg:px-8">
-            <nav aria-label="Breadcrumb" className="text-caption text-text-tertiary">
+          <div className="mobile-safe-x mx-auto max-w-5xl pb-7 pt-6 sm:py-10 lg:px-8">
+            <nav aria-label="Breadcrumb" className="scrollbar-none flex overflow-x-auto whitespace-nowrap text-caption text-text-tertiary">
               <Link href="/" className="hover:text-text-primary">Today</Link>
               <span className="px-2">/</span>
               <Link href={topic ? `/topics/${topic.slug}` : `/category/${article.category.slug}`} className="hover:text-text-primary">{article.category.name}</Link>
             </nav>
 
-            <p className="mt-7 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-accent">{article.category.name}</p>
-            <h1 className="mt-3 max-w-4xl font-display text-[2.15rem] font-semibold leading-[1.04] tracking-[-0.025em] text-text-primary sm:text-[3.4rem] lg:text-[3.8rem]">{article.title}</h1>
-            <p className="mt-5 max-w-3xl text-[1.1rem] leading-7 text-text-secondary sm:text-[1.35rem] sm:leading-8">{summary}</p>
+            <p className="editorial-kicker mt-7">{article.category.name}</p>
+            <h1 className="mt-3 max-w-4xl text-balance font-display text-[2.45rem] font-semibold leading-[0.98] tracking-[-0.035em] text-text-primary sm:text-[3.4rem] lg:text-[3.8rem]">{article.title}</h1>
+            <p className="mt-5 max-w-3xl text-[1.08rem] leading-7 text-text-secondary sm:text-[1.35rem] sm:leading-8">{summary}</p>
             <p className="mt-5 text-caption text-text-tertiary">
               <span className="text-text-secondary">{article.source.name}</span>
               {officialSource ? " · Official source" : ""}
@@ -62,26 +62,30 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </p>
 
             {imageUrl && (
-              <div className="relative mt-8 aspect-[16/8] overflow-hidden bg-bg-elevated">
+              <div className="relative mt-7 aspect-[4/3] overflow-hidden border border-border bg-bg-elevated sm:mt-9 sm:aspect-[16/8]">
                 <StoryImage src={imageUrl} priority sizes="(max-width: 1024px) 100vw, 960px" />
               </div>
             )}
           </div>
         </header>
 
-        <div className="mx-auto max-w-prose px-4 py-9 sm:py-12">
+        <div className="mobile-safe-x mx-auto max-w-prose py-8 sm:py-12">
           {article.aiSummary?.whyItMatters && (
-            <section aria-labelledby="context-heading">
-              <h2 id="context-heading" className="font-display text-2xl font-semibold text-text-primary">Context</h2>
-              <p className="mt-4 text-body-lg leading-8 text-text-secondary">{article.aiSummary.whyItMatters}</p>
+            <section className="border-l-4 border-accent bg-bg-elevated px-5 py-6 sm:px-7" aria-labelledby="context-heading">
+              <p className="editorial-kicker">Why it matters</p>
+              <h2 id="context-heading" className="mt-2 font-display text-[1.7rem] font-semibold leading-tight text-text-primary">Context</h2>
+              <p className="mt-3 text-[1.02rem] leading-7 text-text-secondary sm:text-body-lg sm:leading-8">{article.aiSummary.whyItMatters}</p>
             </section>
           )}
 
           {takeaways.length > 0 && (
-            <section className="mt-10 border-t border-border pt-8" aria-labelledby="know-heading">
-              <h2 id="know-heading" className="font-display text-2xl font-semibold text-text-primary">What to know</h2>
-              <ul className="mt-4 space-y-3">
-                {takeaways.map((takeaway) => <li key={takeaway} className="flex gap-3 text-body-lg leading-8 text-text-secondary"><span aria-hidden="true">—</span><span>{takeaway}</span></li>)}
+            <section className="mt-9 border-t-2 border-text-primary pt-5" aria-labelledby="know-heading">
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 id="know-heading" className="font-display text-[1.7rem] font-semibold text-text-primary">What to know</h2>
+                <span className="text-[0.68rem] uppercase tracking-[0.1em] text-text-tertiary">The essentials</span>
+              </div>
+              <ul className="mt-3">
+                {takeaways.map((takeaway, index) => <li key={takeaway} className="grid grid-cols-[2rem_1fr] gap-2 border-t border-border py-4 first:border-t-0"><span className="pt-1 text-[0.68rem] font-bold tracking-[0.08em] text-accent" aria-hidden="true">0{index + 1}</span><span className="text-[1rem] leading-7 text-text-secondary sm:text-body-lg sm:leading-8">{takeaway}</span></li>)}
               </ul>
             </section>
           )}
@@ -96,8 +100,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           )}
 
           <p className="mt-9">
-            <a href={article.originalUrl} target="_blank" rel="nofollow noopener noreferrer" className="text-sm font-medium text-text-primary underline decoration-border underline-offset-4 hover:decoration-accent">
-              Read the original report at {article.source.name} →
+            <a data-analytics-event="original_source_clicked" href={article.originalUrl} target="_blank" rel="nofollow noopener noreferrer" className="tap-target flex items-center justify-between gap-4 bg-text-primary px-5 py-4 text-sm font-semibold text-bg transition-opacity hover:opacity-90">
+              <span>Read the original report</span><span className="text-right">{article.source.name} ↗</span>
             </a>
           </p>
 
@@ -130,13 +134,16 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
       {relatedArticles.length > 0 && (
         <section className="border-t border-border">
-          <div className="mx-auto max-w-5xl px-4 py-10 lg:px-8">
-            <h2 className="font-display text-2xl font-semibold text-text-primary">More on {article.category.name}</h2>
+          <div className="mobile-safe-x mx-auto max-w-5xl py-10 lg:px-8">
+            <p className="editorial-kicker">Keep reading</p>
+            <h2 className="mt-2 font-display text-[1.8rem] font-semibold text-text-primary">More on {article.category.name}</h2>
             <div className="mt-5 grid border-t border-border md:grid-cols-2">
-              {relatedArticles.slice(0, 4).map((related) => (
-                <article key={related.id} className="border-b border-border py-4 md:pr-8">
-                  <h3 className="font-display text-xl font-semibold leading-snug text-text-primary"><Link href={`/article/${related.slug}`} className="hover:underline">{related.title}</Link></h3>
+              {relatedArticles.slice(0, 4).map((related, index) => (
+                <article key={related.id} className="grid grid-cols-[2rem_1fr] gap-2 border-b border-border py-5 md:pr-8">
+                  <span className="pt-1 text-[0.68rem] font-bold tracking-[0.08em] text-accent">0{index + 1}</span>
+                  <div><h3 className="font-display text-xl font-semibold leading-snug text-text-primary"><Link href={`/article/${related.slug}`} className="hover:underline">{related.title}</Link></h3>
                   <p className="mt-2 text-caption text-text-tertiary">{related.source.name}</p>
+                  </div>
                 </article>
               ))}
             </div>

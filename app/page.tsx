@@ -30,27 +30,35 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-bg">
-      <div className="mx-auto max-w-wide px-4 lg:px-8">
-        <header className="border-b border-border py-8 sm:py-10">
-          <p className="text-caption text-text-tertiary">{dateLabel}</p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+      <div className="mobile-safe-x mx-auto max-w-wide lg:px-8">
+        <header className="border-b border-border pb-6 pt-7 sm:py-10">
+          <div className="flex items-center justify-between gap-4">
+            <p className="editorial-kicker">Daily briefing</p>
+            <p className="text-[0.72rem] font-medium text-text-tertiary">{dateLabel}</p>
+          </div>
+          <div className="mt-5 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div>
-              <h1 className="font-display text-[2.6rem] font-semibold leading-none tracking-[-0.025em] text-text-primary sm:text-5xl">Today</h1>
-              <p className="mt-3 text-body text-text-secondary">The latest developments shaping sports technology.</p>
+              <h1 className="font-display text-[3.35rem] font-semibold leading-[0.9] tracking-[-0.04em] text-text-primary sm:text-6xl">Today</h1>
+              <p className="mt-4 max-w-xl text-[1.02rem] leading-7 text-text-secondary sm:text-body-lg">The developments changing how athletes train, compete and recover.</p>
             </div>
-            <p className="pb-1 text-caption text-text-tertiary">{updatesToday} {updatesToday === 1 ? "update" : "updates"} in the last 24 hours</p>
+            <p className="flex items-center gap-2 pb-1 text-caption text-text-tertiary before:block before:h-1.5 before:w-1.5 before:rounded-full before:bg-accent">
+              {updatesToday} {updatesToday === 1 ? "update" : "updates"} in 24 hours
+            </p>
           </div>
         </header>
 
         {lead ? (
           <>
-            <section className="border-b border-border py-8 sm:py-10">
+            <section className="border-b border-border py-6 sm:py-10">
               <LeadStory article={lead} />
             </section>
 
             {secondary.length > 0 && (
-              <section className="border-b border-border py-7">
-                <h2 className="sr-only">More stories</h2>
+              <section className="border-b border-border py-7 sm:py-9">
+                <div className="mb-1 flex items-center justify-between">
+                  <h2 className="editorial-kicker">Also on our radar</h2>
+                  <span className="text-[0.68rem] uppercase tracking-[0.1em] text-text-tertiary">Selected stories</span>
+                </div>
                 <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
                   {secondary.map((article) => <SecondaryStory key={article.id} article={article} />)}
                 </div>
@@ -63,10 +71,11 @@ export default async function HomePage() {
           </section>
         )}
 
-        <section className="grid gap-8 border-b border-border py-10 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <section className="grid gap-7 border-b border-border py-9 sm:py-12 lg:grid-cols-[13rem_minmax(0,1fr)]">
           <header>
-            <h2 className="font-display text-3xl font-semibold text-text-primary">Latest</h2>
-            <p className="mt-2 text-caption leading-5 text-text-tertiary">Recent reporting, launches and research.</p>
+            <p className="editorial-kicker">The news desk</p>
+            <h2 className="mt-2 font-display text-[2.35rem] font-semibold leading-none text-text-primary">Latest</h2>
+            <p className="mt-3 max-w-xs text-caption leading-5 text-text-tertiary">Reporting, launches and research worth your attention.</p>
           </header>
           <div>
             {feed.length > 0 ? (
@@ -74,19 +83,28 @@ export default async function HomePage() {
             ) : (
               <p className="text-body text-text-tertiary">No additional stories are available yet.</p>
             )}
-            <Link href="/latest" className="mt-6 inline-block text-sm font-medium text-text-primary underline decoration-border underline-offset-4 hover:decoration-accent">
-              View all latest →
+            <Link href="/latest" className="tap-target mt-4 inline-flex items-center border-b border-text-primary text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent">
+              View the full news feed →
             </Link>
           </div>
         </section>
 
-        <section className="py-10">
-          <h2 className="font-display text-3xl font-semibold text-text-primary">Topics</h2>
-          <div className="mt-5 grid border-t border-border sm:grid-cols-2 lg:grid-cols-3">
-            {topics.map((topic) => (
-              <Link key={topic.slug} href={`/topics/${topic.slug}`} className="group border-b border-border py-4 sm:pr-6 lg:mr-8">
-                <h3 className="font-display text-xl font-semibold text-text-primary group-hover:underline">{topic.name}</h3>
+        <section className="py-10 sm:py-12">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="editorial-kicker">Browse the field</p>
+              <h2 className="mt-2 font-display text-[2.35rem] font-semibold leading-none text-text-primary">Topics</h2>
+            </div>
+            <Link href="/topics" className="tap-target inline-flex items-center text-caption font-semibold text-text-primary hover:text-accent">All topics →</Link>
+          </div>
+          <div className="mt-6 grid border-t border-border sm:grid-cols-2 lg:grid-cols-3">
+            {topics.map((topic, index) => (
+              <Link key={topic.slug} href={`/topics/${topic.slug}`} className="group grid min-h-36 grid-cols-[2rem_1fr] gap-3 border-b border-border py-5 sm:pr-6 lg:mr-8">
+                <span className="pt-1 text-[0.68rem] font-semibold tracking-[0.08em] text-accent">0{index + 1}</span>
+                <div>
+                <h3 className="font-display text-[1.35rem] font-semibold leading-tight text-text-primary group-hover:underline">{topic.name}</h3>
                 <p className="mt-1 line-clamp-2 text-caption leading-5 text-text-secondary">{topic.description}</p>
+                </div>
               </Link>
             ))}
           </div>

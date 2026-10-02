@@ -556,6 +556,10 @@ model Subscription {
   userId               String    @unique @map("user_id") @db.Uuid
   stripeCustomerId     String?   @unique @map("stripe_customer_id")
   stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  billingProvider      String    @default("stripe") @map("billing_provider")
+  paddleCustomerId     String?   @unique @map("paddle_customer_id")
+  paddleSubscriptionId String?   @unique @map("paddle_subscription_id")
+  paddleCheckoutId     String?   @map("paddle_checkout_id")
   plan                 Plan      @default(FREE)
   status               String    @default("inactive")
   currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz(6)
@@ -567,6 +571,14 @@ model Subscription {
 
   @@index([status])
   @@map("subscriptions")
+}
+
+model PaddleEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("paddle_events")
 }
 
 model StripeEvent {

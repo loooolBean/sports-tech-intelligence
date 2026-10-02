@@ -20,8 +20,13 @@ export async function syncStripeSubscription(
   const userId = userIdHint ?? subscription.metadata.userId ?? null;
   const existing = await tx.subscription.findFirst({
     where: { OR: [{ stripeSubscriptionId: subscription.id }, { stripeCustomerId: customerId }] },
-    select: { userId: true },
+    select: { userId: true, stripeSubscriptionId: true, status: true },
   });
+  // A cancellation for an older subscription must not revoke a newer one.
+  if (existing?.stripeSubscriptionId && existing.stripeSubscriptionId !== subscription.id
+    && !["active", "trialing"].includes(subscription.status)) {
+    return { userId: existing.userId, status: existing.status };
+  }
   const resolvedUserId = existing?.userId ?? userId;
   if (!resolvedUserId) throw new Error(`Unable to associate Stripe subscription ${subscription.id} with a user.`);
   return tx.subscription.upsert({

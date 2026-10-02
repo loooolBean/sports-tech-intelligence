@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const signature = request.headers.get("stripe-signature");
-  if (!webhookSecret || !signature) return NextResponse.json({ error: "Stripe webhook is not configured." }, { status: 503 });
+  if (!webhookSecret) return NextResponse.json({ error: "Stripe webhook is not configured." }, { status: 503 });
+  if (!signature) return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
   const body = await request.text();
   let event: Stripe.Event;
   try {
@@ -19,26 +20,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid Stripe signature." }, { status: 400 });
   }
 
-  let subscription: Stripe.Subscription | null = null;
+  let subscriptionId: string | null = null;
+  let customerId: string | null = null;
   let userId: string | null = null;
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     userId = session.metadata?.userId ?? session.client_reference_id ?? null;
-    const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-    if (subscriptionId) subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+    subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+    customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
   } else if (
     event.type === "customer.subscription.created" ||
     event.type === "customer.subscription.updated" ||
     event.type === "customer.subscription.deleted"
   ) {
-    subscription = event.data.object;
+    const subscription = event.data.object;
+    subscriptionId = subscription.id;
+    customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     userId = subscription.metadata.userId ?? null;
   }
 
   const processed = await prisma.$transaction(async (tx) => {
     const inserted = await tx.stripeEvent.createMany({ data: [{ id: event.id, type: event.type }], skipDuplicates: true });
     if (!inserted.count) return null;
-    if (!subscription) return { userId: null, activated: false, cancelled: false };
+    if (!subscriptionId || !customerId) return { userId: null, activated: false, cancelled: false };
+    // Serialize updates for a customer and fetch current state inside that lock.
+    // Stripe may deliver events out of order, including an old "active" snapshot.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${customerId}, 0))`;
+    const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
     const customer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     const previous = await tx.subscription.findFirst({ where: { stripeCustomerId: customer } });
     const synced = await syncStripeSubscription(subscription, userId, tx);
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
       activated: ["active", "trialing"].includes(synced.status) && !["active", "trialing"].includes(previous?.status ?? ""),
       cancelled: synced.status === "canceled" && previous?.status !== "canceled",
     };
-  });
+  }, { maxWait: 10000, timeout: 35000 });
   if (!processed) return NextResponse.json({ received: true, duplicate: true });
 
   if (processed.userId) {

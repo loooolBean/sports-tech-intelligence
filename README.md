@@ -106,7 +106,7 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | 看数据库和备份 | [Supabase Dashboard](https://supabase.com/dashboard) |
 | 看代码和修改历史 | [GitHub Repository](https://github.com/loooolBean/sports-tech-intelligence) |
 | 看 AI 用量 | 当前 `AI_API_BASE_URL` 所属服务商的 Usage / Billing 页面 |
-| 看付款 | [/admin/revenue](https://sports-tech-intelligence.vercel.app/admin/revenue)（需连接 Stripe） |
+| 看付款 | [/admin/revenue](https://sports-tech-intelligence.vercel.app/admin/revenue)（需连接 Paddle） |
 
 ## 1. 这个项目是什么
 
@@ -140,7 +140,7 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 2. 在 Topics 选关心的领域；Search 可找文章、公司、产品和研究。
 3. 登录后在文章页点击 **Save for later**；收藏保存在 Dashboard 的 Saved for later。
 4. 在公司或产品页点击 Watch，之后到 Watchlist 和 Alerts 看关联资讯。
-5. Pro 功能在 Pricing 查看；只有 Stripe 正式配置并验证后才能真实收费。
+5. Pro 为 15 美元/月，在 Pricing 查看；只有 Paddle 正式审核、配置和支付验收通过后才能真实收费。
 
 ## 4. 管理员的唯一日常入口
 
@@ -153,7 +153,7 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | Sources | 管理 RSS 来源，启用或停用 |
 | Growth | 访客、文章阅读、来源、搜索、Save / Watch 人数、热门文章 |
 | Users | Clerk 注册数、今日新增、最近账号、本地收藏 / 关注关系数 |
-| Revenue | Stripe Active / Trial / 异常订阅、失败账单、Webhook 同步 |
+| Revenue | Paddle Active / Trial / 异常订阅、Webhook 同步及支付控制台入口 |
 | Automations | RSS / SEO 日程、任务记录、RSS / AI 失败 |
 | System | 数据库、服务连接、最近部署及错误排查入口 |
 | Settings | 首次配置指导和配置是否存在；不显示密钥 |
@@ -185,7 +185,7 @@ Research / Evidence / Categories / Tags 在 Content 内；Claims / Leads 在 Use
 
 1. Growth 看热门文章、来源和行为趋势；PostHog 看 3 个漏斗、留存和经过遮罩的回放。
 2. Users 看注册与最近活跃记录。Clerk 账号数量不等于经过人工核验的真人数量。
-3. Revenue 看付款异常；Stripe 深查账单和投递失败。
+3. Revenue 看付款异常；Paddle 深查账单和投递失败。
 4. Content 检查内容质量，Automations 检查重复失败来源。
 5. Supabase 确认备份；Vercel 检查性能和运行错误；AI Provider 检查用量。
 
@@ -198,7 +198,7 @@ Research / Evidence / Categories / Tags 在 Content 内；Claims / Leads 在 Use
 3. 看 New Users、Active Users 和 Retention。
 4. 看热门文章和搜索使用情况。
 5. 检查数据库备份能否找到。
-6. 如果开始收费，再检查 Stripe Payments 和 Subscriptions。
+6. 如果开始收费，再检查 Paddle Transactions 和 Subscriptions。
 7. 删除明显没有价值的开发计划，不要盲目增加工具。
 
 ## 8. 内容怎么管理
@@ -456,32 +456,40 @@ git push origin main
 
 备份不是“看见按钮就完成”。至少需要知道备份日期、存放位置和谁能恢复。
 
-## 18. 以后怎么收费
+## 18. Paddle 收费设置：15 美元/月
 
-Stripe 代码已经存在，包括 Checkout、Webhook、Subscription 同步和 Customer Portal；但 Production 尚未配置 Stripe 环境变量，所以当前不能真实收费。
+用户已选择 Paddle，套餐为 USD 15/月，服务于海外用户。中国内地公司／个体工商户需使用真实主体向 Paddle 申请，产品和账户是否获批以 Paddle 审核为准。Sandbox 测试通过不等于真实收款已开通。旧 Stripe 接口仅用于兼容历史订阅。
 
 最简单付款路径：
 
 ```text
 用户选择 Pro
-→ Stripe Checkout
-→ 用户在 Stripe 付款
-→ Stripe Webhook 通知网站
+→ 网站 /checkout 打开 Paddle Checkout
+→ 用户在 Paddle 付款
+→ Paddle 签名通知 /api/webhooks/paddle
 → subscriptions 表更新
 → 用户获得 Pro 权限
 ```
 
-Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败和 Customer Portal。网站不保存银行卡信息。
+Paddle 负责付款、订阅、收据、销售税处理和 Customer Portal。网站不保存银行卡信息。用户在 Settings → Billing 管理付款方式、账单及取消续费。最终税费和订单金额在结账时显示。
 
-开始收费前必须亲自完成：
+### 先配置 Sandbox
 
-1. Stripe 创建 recurring Product / Price。
-2. 配置 `STRIPE_SECRET_KEY` 和 `STRIPE_PRO_PRICE_ID`。
-3. 建立指向 `/api/webhooks/stripe` 的 Webhook。
-4. 配置 `STRIPE_WEBHOOK_SECRET`。
-5. 启用 Customer Portal，并用测试卡走完整流程。
+1. 注册 [Paddle Sandbox](https://sandbox-vendors.paddle.com/signup)。正式账号为 [Paddle](https://vendors.paddle.com/signup)，需另外审核。
+2. Developer tools → Authentication：创建服务端 API key 和 Client-side token。API key 需要读取 Products、Prices、Subscriptions，创建／读取 Transactions，创建 Customer Portal sessions；如委托自动创建商品和通知，则另外授予对应写权限。
+3. 填入本地 `.env.local`：`BILLING_PROVIDER=paddle`、`NEXT_PUBLIC_PADDLE_ENVIRONMENT=sandbox`、`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`。API key 不得加 NEXT_PUBLIC 前缀。
+4. Catalog 创建 Pro 商品及月付价格：USD 15.00，每月一次，不启用试用；将 `pri_...` 填入 `PADDLE_PRO_PRICE_ID`。
+5. Checkout 设置 Default payment link 为 `https://sports-tech-intelligence.vercel.app/checkout`；正式环境需要域名审核。
+6. Developer tools → Notifications：Destination 为 `https://sports-tech-intelligence.vercel.app/api/webhooks/paddle`，启用 `transaction.completed`、`subscription.created`、`subscription.activated`、`subscription.updated`、`subscription.canceled`、`subscription.paused`、`subscription.resumed`、`subscription.past_due`、`subscription.trialing`。将签名密钥填入 `PADDLE_WEBHOOK_SECRET`。
+7. 将配置同步到 Vercel 后重新部署。在明确显示 Test checkout 的页面完成 Sandbox 付款、取消、失败扣款、重复通知和乱序通知测试。
 
-付款后日常在 /admin/revenue 查看；深度排查在 Stripe Dashboard 看 `Payments`、`Customers`、`Subscriptions` 和 `Revenue`。网站数据库的 `subscriptions` 保存权限状态，`stripe_events` 用于防止同一 Webhook 重复处理。
+### 启用真实收费前
+
+完成 Paddle 主体、域名和产品审核，确认网站有准确的经营主体信息、客服联系方式、服务条款和退款政策。替换全部 Sandbox 凭据与价格 ID，把 `NEXT_PUBLIC_PADDLE_ENVIRONMENT` 改为 `production`，再重新部署。正式账号开户、提交证件、同意服务协议和真实付款均由经营者本人完成。
+
+付款后日常在 /admin/revenue 查看；深度排查在 Paddle Dashboard 看 Transactions、Subscriptions 和 Notifications。`subscriptions` 保存权限，`paddle_events` 对通知去重。接收到通知后读取 Paddle 当前订阅状态，同一客户的写入串行执行，避免延迟通知撤销新权限。浏览器访问 success URL 不会授予 Pro。
+
+2026-10-03：Paddle 数据库迁移已执行，执行前备份并校验 41 张应用表；完整 Sandbox 支付及正式收款仍待账号配置验收。
 
 当前阶段只需要 Free / Pro，不要先设计复杂定价。还没有真实付费时，优先关注内容质量、访问、回访和注册，暂时不要过度关注 MRR、LTV、CAC。
 
@@ -494,7 +502,7 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 | Clerk | 注册、登录、用户 | Dashboard → Billing / Usage |
 | AI Provider | 摘要、分类和 SEO 调用 | 当前 API Key 服务商 → Usage / Billing |
 | Domain | 独立域名（当前尚未确认） | 域名注册商后台 |
-| Stripe | 以后收费的交易手续费 | Stripe → Balance / Reports |
+| Paddle | 官方标准费率 5% + $0.50/笔；以账户实际条款为准 | Paddle → Reports / Payouts |
 
 当前不额外接入邮件服务或 Sentry。PostHog 的事件与 Replay 可能产生用量费用，请在 PostHog 设置用量上限。
 
@@ -507,7 +515,7 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 | [Supabase](https://supabase.com/dashboard) | ACTIVE | PostgreSQL、表、SQL、日志、备份 |
 | [GitHub](https://github.com/loooolBean/sports-tech-intelligence) | ACTIVE | 代码、commit、版本恢复 |
 | 当前 OpenAI-compatible Provider | ACTIVE | AI Usage、Billing、Rate Limits |
-| [Stripe](https://dashboard.stripe.com) | NOT CONFIGURED IN PRODUCTION | 以后付款和订阅 |
+| [Paddle](https://vendors.paddle.com/) | INTEGRATION ADDED; ACCOUNT AND PAYMENT VALIDATION PENDING | 15 美元/月订阅、通知、账单管理 |
 | [PostHog](https://us.posthog.com/project/642621/home) | CONFIGURED; 3 FUNNELS CREATED; LIVE TRAFFIC VERIFICATION PENDING | 主要产品分析、漏斗、回放 |
 | Vercel Web Analytics | RETAINED | 辅助流量观察 |
 
@@ -531,8 +539,14 @@ Secret 只配置在本地 `.env` 或 Vercel Environment Variables。README 只�
 | `CLERK_WEBHOOK_SECRET` | 验证 Clerk Webhook | 用户同步 |
 | `ADMIN_EMAILS` | 逗号分隔的管理员邮箱 | Admin |
 | `CRON_SECRET` | 保护 Cron API | Cron |
-| `STRIPE_SECRET_KEY` | Stripe 服务端请求 | 真实收费 |
-| `STRIPE_WEBHOOK_SECRET` | 验证 Stripe Webhook | 真实收费 |
+| `BILLING_PROVIDER` | 当前为 paddle，历史 Stripe 兼容值为 stripe | 支付 |
+| `PADDLE_API_KEY` | Paddle 服务端请求 | 支付 |
+| `PADDLE_PRO_PRICE_ID` | USD 15/月价格 ID | 支付 |
+| `PADDLE_WEBHOOK_SECRET` | 验证 Paddle 通知 | 支付 |
+| `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | 公开的客户端 checkout token | 支付 |
+| `NEXT_PUBLIC_PADDLE_ENVIRONMENT` | sandbox 或 production，缺省 sandbox | 支付 |
+| `STRIPE_SECRET_KEY` | 历史 Stripe 服务端请求 | 旧订阅兼容 |
+| `STRIPE_WEBHOOK_SECRET` | 验证历史 Stripe Webhook | 旧订阅兼容 |
 | `STRIPE_PRO_PRICE_ID` | Pro recurring Price ID | 真实收费 |
 | `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_POSTHOG_HOST` | 浏览器与服务端事件采集 | 产品分析 |
 | `POSTHOG_PROJECT_ID` / `POSTHOG_PERSONAL_API_KEY` | 服务端只读报表 | Admin Growth |
@@ -644,14 +658,14 @@ npm run build
 - 管理员 Overview 能读取数据；断开报表密钥时显示 Not connected；无效密钥时显示 Unavailable。
 - 文章 Feature / Hide 后公开 Feed 更新；收藏后 Dashboard 可见，再取消。
 - PostHog 收到 16 种事件的对应真实操作；登录前后关联，退出 reset；私有页没有 replay。
-- Stripe 测试付款、取消与重复 webhook：权限正确，成功事件不因刷新 success 页重复产生。
+- Paddle Sandbox 付款、取消、失败与重复 webhook：权限正确，成功事件不因刷新 success 页重复产生。
 - 在手机检查菜单与文章表横向滚动，再验证 Production。
 
 重要原则：
 
 - 所有页面依赖数据库，因此使用动态渲染。
 - Admin 写入必须经过服务端管理员检查。
-- Stripe Webhook 是订阅状态的事实来源。
+- 经签名验证的支付通知触发服务端查询支付平台当前订阅状态；浏览器回跳不能授予权限。
 - Vendor 内容不能改写独立 Research / Evidence。
 - Importance Score 只是内部编辑排序，不是科学评分。
 - 未收录 Evidence 不等于 Evidence 不存在。

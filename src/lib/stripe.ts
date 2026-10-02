@@ -3,13 +3,13 @@ import Stripe from "stripe";
 let stripeClient: Stripe | null = null;
 
 export function isStripeConfigured() {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRO_PRICE_ID);
+  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRO_PRICE_ID && process.env.STRIPE_WEBHOOK_SECRET);
 }
 
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe is not configured. Set STRIPE_SECRET_KEY.");
-  stripeClient ??= new Stripe(key);
+  stripeClient ??= new Stripe(key, { timeout: 10000, maxNetworkRetries: 1 });
   return stripeClient;
 }
 

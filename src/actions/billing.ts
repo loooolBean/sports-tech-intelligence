@@ -3,19 +3,25 @@
 import { redirect } from "next/navigation";
 import { getCurrentUserProfile } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { absoluteUrl, getStripe } from "@/src/lib/stripe";
+import { absoluteUrl, getStripe, isStripeConfigured } from "@/src/lib/stripe";
+import { isPurchasableProPrice } from "@/src/lib/billing-policy";
 import { captureProductEvent } from "@/src/lib/posthog-server";
+import { billingProvider } from "@/src/lib/paddle";
+import { startPaddleCheckout, openPaddlePortal } from "./paddle-billing";
 
 export async function startProCheckout() {
+  if (billingProvider() === "paddle") return startPaddleCheckout();
   const user = await getCurrentUserProfile();
   if (!user) redirect("/sign-in?redirect_url=%2Fpricing%3Fcheckout%3Dstart");
   const priceId = process.env.STRIPE_PRO_PRICE_ID;
-  if (!priceId) redirect("/pricing?error=stripe-not-configured");
+  if (!priceId || !isStripeConfigured()) redirect("/pricing?error=checkout-unavailable");
   const stripe = getStripe();
+  const price = await stripe.prices.retrieve(priceId).catch(() => null);
+  if (!price || !isPurchasableProPrice(price)) redirect("/pricing?error=checkout-unavailable");
   let localSubscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
   let customerId = localSubscription?.stripeCustomerId ?? null;
   if (!customerId) {
-    const customer = await stripe.customers.create({ email: user.email, name: user.name ?? undefined, metadata: { userId: user.id } });
+    const customer = await stripe.customers.create({ email: user.email, name: user.name ?? undefined, metadata: { userId: user.id } }, { idempotencyKey: `customer:${user.id}` });
     customerId = customer.id;
     localSubscription = await prisma.subscription.upsert({
       where: { userId: user.id },
@@ -44,6 +50,7 @@ export async function openBillingPortal() {
   const user = await getCurrentUserProfile();
   if (!user) redirect("/sign-in?redirect_url=%2Fsettings%2Fbilling");
   const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+  if (subscription?.billingProvider === "paddle") return openPaddlePortal();
   if (!subscription?.stripeCustomerId) redirect("/pricing");
   const session = await getStripe().billingPortal.sessions.create({
     customer: subscription.stripeCustomerId,

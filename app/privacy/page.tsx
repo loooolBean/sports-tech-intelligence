@@ -60,7 +60,7 @@ export default function PrivacyPage() {
               with our site. When enabled, PostHog records product events and masked session
               replays on public pages. All text and inputs are masked; private account,
               admin and payment pages, embedded frames, and pages with query parameters
-              are excluded from replay. We do not record Stripe Hosted Checkout.
+              are excluded from replay. Payment checkout is excluded from recordings.
               Browser analytics respects Do Not Track. You can also manage storage through
               your browser settings; account and payment records are separate from analytics.
             </p>
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
                 <strong>PostHog</strong> — product events, traffic, funnels, retention and masked session replay
               </li>
               <li>
-                <strong>Stripe</strong> — hosted payments and subscriptions; we do not store card details
+                <strong>Paddle (and Stripe for legacy subscriptions)</strong> — hosted payments and subscriptions; we do not store card details
               </li>
               <li>
                 <strong>Vercel</strong> — hosting and server infrastructure

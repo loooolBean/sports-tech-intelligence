@@ -7,7 +7,7 @@ export const PRODUCT_EVENTS = [
 export type ProductEvent = typeof PRODUCT_EVENTS[number];
 
 export function privateAnalyticsPath(path: string) {
-  return /^\/(admin|dashboard|watchlist|alerts|vendor|settings|billing|sign-in|sign-up)(\/|$)/.test(path)
+  return /^\/(admin|dashboard|watchlist|alerts|vendor|settings|billing|checkout|sign-in|sign-up)(\/|$)/.test(path)
     || /^\/companies\/[^/]+\/claim(?:\/|$)/.test(path);
 }
 

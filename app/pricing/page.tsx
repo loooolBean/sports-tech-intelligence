@@ -5,6 +5,8 @@ import { startProCheckout } from "@/src/actions/billing";
 import { ProBadge } from "@/src/components/pro/pro-gate";
 import { PRO_PLAN } from "@/src/lib/plans";
 import { getStripe, isStripeConfigured } from "@/src/lib/stripe";
+import { formatPrice, isPurchasableProPrice } from "@/src/lib/billing-policy";
+import { billingProvider, getPaddle, isPaddleConfigured, isPaddleProPrice, paddleSandbox } from "@/src/lib/paddle";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -33,21 +35,23 @@ const proFeatures = [
 
 export default async function PricingPage({ searchParams }: Props) {
   const params = await searchParams;
-  const configured = isStripeConfigured();
-  let displayPrice = `$${PRO_PLAN.fallbackMonthlyPrice}`;
+  const provider = billingProvider();
+  let configured = provider === "paddle" ? isPaddleConfigured() : isStripeConfigured();
+  let displayPrice: string | null = null;
 
   if (configured) {
     try {
-      const price = await getStripe().prices.retrieve(process.env.STRIPE_PRO_PRICE_ID!);
-      if (price.unit_amount !== null) {
-        displayPrice = new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: price.currency.toUpperCase(),
-          maximumFractionDigits: 0,
-        }).format(price.unit_amount / 100);
+      if (provider === "paddle") {
+        const price = await getPaddle().prices.get(process.env.PADDLE_PRO_PRICE_ID!);
+        configured = isPaddleProPrice(price);
+        if (configured) displayPrice = "$15";
+      } else {
+        const price = await getStripe().prices.retrieve(process.env.STRIPE_PRO_PRICE_ID!);
+        configured = isPurchasableProPrice(price);
+        if (configured) displayPrice = formatPrice(price);
       }
     } catch {
-      displayPrice = `$${PRO_PLAN.fallbackMonthlyPrice}`;
+      configured = false;
     }
   }
 
@@ -67,6 +71,7 @@ export default async function PricingPage({ searchParams }: Props) {
 
       <section className="mx-auto max-w-5xl px-4 py-12 lg:px-8">
         <PricingNotice params={params} />
+        {configured && provider === "paddle" && paddleSandbox() && <p className="mb-6 rounded border border-amber-500 p-4">Test payments only. Pro checkout is currently running in sandbox mode.</p>}
         <div className="grid gap-6 md:grid-cols-2 md:items-stretch">
           <article className="card-surface flex flex-col p-7 sm:p-8">
             <div className="flex items-start justify-between gap-4">
@@ -91,14 +96,14 @@ export default async function PricingPage({ searchParams }: Props) {
               <div className="mt-5 flex items-center gap-2"><h2 className="text-h2">Pro</h2><ProBadge /></div>
               <p className="mt-2 max-w-xs text-body text-bg/65">For evaluation, procurement, investing and evidence-led decisions.</p>
             </div>
-            <p className="mt-6 text-5xl font-extrabold tracking-tight">{displayPrice}<span className="text-body font-normal text-bg/50"> / month</span></p>
+            <p className="mt-6 text-5xl font-extrabold tracking-tight">{displayPrice ?? `$${PRO_PLAN.fallbackMonthlyPrice}`}<span className="text-body font-normal text-bg/50"> USD / month</span></p>
             <PlanFeatures features={proFeatures} dark />
             <form action={startProCheckout} className="mt-auto">
               <button disabled={!configured} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-bg px-5 py-3 text-caption font-bold text-text-primary transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
-                {configured ? "Upgrade to Pro" : "Stripe setup required"}<ArrowRight className="h-4 w-4" />
+                {configured ? "Upgrade to Pro" : "Pro is coming soon"}<ArrowRight className="h-4 w-4" />
               </button>
             </form>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-caption text-bg/50"><ShieldCheck className="h-3.5 w-3.5" /> Secure checkout powered by Stripe</p>
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-caption text-bg/50"><ShieldCheck className="h-3.5 w-3.5" /> {configured ? `Secure checkout powered by ${provider === "paddle" ? "Paddle" : "Stripe"}` : "Free access remains available while we prepare Pro."}</p>
           </article>
         </div>
 
@@ -132,7 +137,7 @@ function PricingNotice({ params }: { params: { checkout?: string; error?: string
     : params.reason === "watch-limit"
       ? "Free accounts can watch up to 5 entities. Existing watches are preserved; Pro unlocks an unlimited watchlist."
       : params.error
-        ? "Checkout is not available until Stripe environment variables are configured."
+        ? "Checkout is temporarily unavailable. Please try again later; you can continue exploring with Free."
         : null;
 
   return message ? <p className="mb-8 rounded-xl border border-border bg-bg-card p-4 text-body text-text-secondary">{message}</p> : null;

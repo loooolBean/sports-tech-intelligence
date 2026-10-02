@@ -21,8 +21,8 @@ export default async function AdminPage() {
   if (!growth.data) attention.push({ title: `PostHog: ${growth.status}`, href: "/admin/settings#posthog", action: "Connect" });
   else if (!growth.data.latestEvent) attention.push({ title: "PostHog has no events in the past 7 days", href: "/admin/settings#posthog", action: "Check" });
   if (!users.data) attention.push({ title: `User accounts: ${users.status}`, href: "/admin/settings#clerk", action: "Check" });
-  if (!revenue.data) attention.push({ title: `Payments: ${revenue.status}`, href: "/admin/settings#stripe", action: "Setup" });
-  if (!process.env.STRIPE_WEBHOOK_SECRET) attention.push({ title: "Stripe webhook not configured", href: "/admin/settings#stripe", action: "Setup" });
+  if (!revenue.data) attention.push({ title: `Payments: ${revenue.status}`, href: "/admin/settings#paddle", action: "Setup" });
+  if (!process.env.PADDLE_WEBHOOK_SECRET) attention.push({ title: "Paddle webhook not configured", href: "/admin/settings#paddle", action: "Setup" });
   if (revenue.data?.pastDue || revenue.data?.invoices.length) attention.push({ title: "Subscriptions or payments need attention", href: "/admin/revenue", action: "Review" });
   const systems = [
     ["RSS", b?.rssHealth ?? business.status],

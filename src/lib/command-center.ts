@@ -4,6 +4,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 import { requireAdminUser } from "./auth";
 import { getStripe } from "./stripe";
+import { billingProvider, getPaddle, paddleSandbox } from "./paddle";
 import { aiHealth, jobHealth, reportingWindow } from "./admin-health";
 import type { Report } from "./posthog-reporting";
 
@@ -39,7 +40,7 @@ async function loadOperations() {
     prisma.$transaction([prisma.watchedCompany.count(), prisma.watchedProduct.count(), prisma.watchedTechnology.count(), prisma.savedArticle.count()]),
     prisma.user.count(),
     prisma.subscription.findMany({ orderBy: { updatedAt: "desc" }, take: 30, include: { user: { select: { name: true, email: true } } } }),
-    prisma.stripeEvent.findFirst({ orderBy: { processedAt: "desc" } }),
+    billingProvider() === "paddle" ? prisma.paddleEvent.findFirst({ orderBy: { processedAt: "desc" } }) : prisma.stripeEvent.findFirst({ orderBy: { processedAt: "desc" } }),
   ]);
   const rss = jobs.find(j => j.jobName === "rss-ingestion") ?? null;
   const seo = jobs.find(j => j.jobName === "seo-metadata") ?? null;
@@ -82,6 +83,17 @@ export const getUsersReport = cache(async (): Promise<Report<Awaited<ReturnType<
 });
 
 async function loadRevenue() {
+  if (billingProvider() === "paddle") {
+    let active = 0, trialing = 0, pastDue = 0, cancelled = 0, scanned = 0;
+    for await (const subscription of getPaddle().subscriptions.list({ priceId: [process.env.PADDLE_PRO_PRICE_ID!], perPage: 100 })) {
+      if (++scanned > 2000) throw new Error("Subscription report exceeded limit");
+      if (subscription.status === "active") active++;
+      if (subscription.status === "trialing") trialing++;
+      if (subscription.status === "past_due") pastDue++;
+      if (subscription.status === "canceled") cancelled++;
+    }
+    return { active, trialing, pastDue, cancelled, testMode: paddleSandbox(), invoices: [] as { id: string; number: string | null; amount: number; currency: string; attempted: number }[] };
+  }
   const stripe = getStripe();
   let active = 0, trialing = 0, pastDue = 0, cancelled = 0;
   let scanned = 0;
@@ -100,7 +112,7 @@ async function loadRevenue() {
 
 export const getRevenueReport = cache(async (): Promise<Report<Awaited<ReturnType<typeof loadRevenue>>>> => {
   await assertAdmin();
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRO_PRICE_ID) return { status: "Not connected", data: null };
+  if (billingProvider() === "paddle" ? (!process.env.PADDLE_API_KEY || !process.env.PADDLE_PRO_PRICE_ID) : (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRO_PRICE_ID)) return { status: "Not connected", data: null };
   try { return { status: "Connected", data: await bounded(loadRevenue()) }; }
   catch { return { status: "Unavailable", data: null }; }
 });

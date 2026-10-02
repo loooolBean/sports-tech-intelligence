@@ -7,14 +7,18 @@ import { isPaddleConfigured, isPaddleProPrice } from "../src/lib/paddle";
 import { syncPaddleSubscription } from "../src/lib/paddle-subscriptions";
 
 test("checkout remains closed until provider setup is verified", () => {
-  const keys = ["PADDLE_CHECKOUT_ENABLED", "PADDLE_API_KEY", "PADDLE_PRO_PRICE_ID", "PADDLE_WEBHOOK_SECRET", "NEXT_PUBLIC_PADDLE_CLIENT_TOKEN", "NEXT_PUBLIC_PADDLE_ENVIRONMENT"] as const;
+  const keys = ["PADDLE_CHECKOUT_ENABLED", "PADDLE_API_KEY", "PADDLE_PRO_PRICE_ID", "PADDLE_WEBHOOK_SECRET", "NEXT_PUBLIC_PADDLE_CLIENT_TOKEN", "NEXT_PUBLIC_PADDLE_ENVIRONMENT", "VERCEL_ENV"] as const;
   const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   try {
     Object.assign(process.env, { PADDLE_API_KEY: "test_key", PADDLE_PRO_PRICE_ID: "pri_test", PADDLE_WEBHOOK_SECRET: "secret", NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "test_client", NEXT_PUBLIC_PADDLE_ENVIRONMENT: "sandbox" });
     delete process.env.PADDLE_CHECKOUT_ENABLED;
     assert.equal(isPaddleConfigured(), false);
     process.env.PADDLE_CHECKOUT_ENABLED = "true";
+    delete process.env.VERCEL_ENV;
     assert.equal(isPaddleConfigured(), true);
+    process.env.VERCEL_ENV = "production";
+    assert.equal(isPaddleConfigured(), false);
+    delete process.env.VERCEL_ENV;
     process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN = "live_client";
     assert.equal(isPaddleConfigured(), false);
   } finally {

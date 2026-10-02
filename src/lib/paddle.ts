@@ -3,6 +3,8 @@ import { Environment, Paddle, type Price } from "@paddle/paddle-node-sdk";
 export function billingProvider() { return process.env.BILLING_PROVIDER === "stripe" ? "stripe" : "paddle"; }
 export function paddleSandbox() { return process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT !== "production"; }
 export function isPaddleConfigured() {
+  // Never let public production visitors obtain Pro through test payments.
+  if (process.env.VERCEL_ENV === "production" && paddleSandbox()) return false;
   const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
   // Enable the public upgrade path only after a draft Sandbox transaction
   // confirms that Paddle's default payment link has been configured.

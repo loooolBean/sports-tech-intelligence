@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserProfile } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { absoluteUrl, getStripe } from "@/src/lib/stripe";
+import { captureProductEvent } from "@/src/lib/posthog-server";
 
 export async function startProCheckout() {
   const user = await getCurrentUserProfile();
@@ -35,6 +36,7 @@ export async function startProCheckout() {
     cancel_url: absoluteUrl("/pricing?checkout=cancelled"),
   });
   if (!session.url) throw new Error("Stripe did not return a Checkout URL.");
+  await captureProductEvent(user.clerkUserId, "checkout_started", { checkout_id: session.id }, session.id);
   redirect(session.url);
 }
 

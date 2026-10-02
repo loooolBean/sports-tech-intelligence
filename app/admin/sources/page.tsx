@@ -1,5 +1,6 @@
 ﻿import { SourceType } from "@prisma/client";
 import { createSource, getAdminSources, toggleSourceStatus } from "../../../src/lib/admin";
+import { formatAdminDate } from "@/src/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export default async function AdminSourcesPage() {
             <div>
               <h2 className="font-semibold text-text-primary">{source.name}</h2>
               <p className="mt-1 text-body text-text-secondary">{source.sourceType} · score {String(source.reputationScore)}</p>
-              <p className="mt-1 text-body text-text-tertiary">{source.rssUrl ?? source.websiteUrl ?? "No URL"}</p>
+              <p className="mt-1 break-all text-body text-text-tertiary">{source.rssUrl ?? source.websiteUrl ?? "No URL"}</p>
+              <p className="mt-2 text-xs text-text-secondary">{source.isActive ? "Enabled" : "Disabled"} · Last fetched: {formatAdminDate(source.lastFetchedAt)}</p>
             </div>
             <form action={toggleSourceStatus}>
               <input name="sourceId" type="hidden" value={source.id} />

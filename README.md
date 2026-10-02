@@ -22,8 +22,8 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 - [网站首页](https://sports-tech-intelligence.vercel.app)
 - [最新文章](https://sports-tech-intelligence.vercel.app/latest)
 - [管理员首页](https://sports-tech-intelligence.vercel.app/admin)
-- [运营状态页](https://sports-tech-intelligence.vercel.app/admin/ops)
-- [文章管理](https://sports-tech-intelligence.vercel.app/admin/articles)
+- [运营状态页](https://sports-tech-intelligence.vercel.app/admin)
+- [文章管理](https://sports-tech-intelligence.vercel.app/admin/content)
 
 打开 Admin 页面时，如果系统要求登录：
 
@@ -81,11 +81,11 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | --- | --- | --- |
 | 网站打不开 | [Vercel Deployments](https://vercel.com/douzi-sport-projects1/sports-tech-intelligence/deployments) 看最新部署是否 `Ready` | [Vercel Logs](https://vercel.com/douzi-sport-projects1/sports-tech-intelligence/logs) 看运行错误 |
 | 登录或注册不了 | [Clerk Dashboard](https://dashboard.clerk.com) → Logs | 再看 Vercel Logs |
-| 今天文章没更新 | [/admin/ops](https://sports-tech-intelligence.vercel.app/admin/ops) → RSS ingestion | [/admin/failures](https://sports-tech-intelligence.vercel.app/admin/failures) |
-| 有文章但没有摘要或分类 | `/admin/ops` → AI processing | Vercel Logs，再看当前 AI Provider 的余额、用量与限额 |
+| 今天文章没更新 | [/admin](https://sports-tech-intelligence.vercel.app/admin) → RSS ingestion | [/admin/failures](https://sports-tech-intelligence.vercel.app/admin/failures) |
+| 有文章但没有摘要或分类 | `/admin` → AI processing | Vercel Logs，再看当前 AI Provider 的余额、用量与限额 |
 | 数据库报错 | [Supabase Dashboard](https://supabase.com/dashboard) → Logs | Vercel Logs |
 | 刚更新代码后网站坏了 | Vercel Deployments → Build Logs | GitHub 找最后一次正常 commit，revert 或重新部署上一版本 |
-| 出现垃圾新闻 | [/admin/articles](https://sports-tech-intelligence.vercel.app/admin/articles) | 编辑文章并勾选 `Hide from public feeds` |
+| 出现垃圾新闻 | [/admin/content](https://sports-tech-intelligence.vercel.app/admin/content) | 编辑文章并勾选 `Hide from public feeds` |
 
 不要在不清楚原因时连续修改很多文件。先确定是部署、数据库、登录、RSS 还是 AI 的问题。
 
@@ -95,18 +95,18 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | --- | --- |
 | 看正式网站 | [Production](https://sports-tech-intelligence.vercel.app) |
 | 看管理员首页 | [/admin](https://sports-tech-intelligence.vercel.app/admin) |
-| 看今天是否正常 | [/admin/ops](https://sports-tech-intelligence.vercel.app/admin/ops) |
-| 管理文章 | [/admin/articles](https://sports-tech-intelligence.vercel.app/admin/articles) |
+| 看今天是否正常 | [/admin](https://sports-tech-intelligence.vercel.app/admin) |
+| 管理文章 | [/admin/content](https://sports-tech-intelligence.vercel.app/admin/content) |
 | 管理 RSS 来源 | [/admin/sources](https://sports-tech-intelligence.vercel.app/admin/sources) |
 | 看 RSS / AI 失败 | [/admin/failures](https://sports-tech-intelligence.vercel.app/admin/failures) |
-| 看流量和热门页面 | [Vercel Analytics](https://vercel.com/douzi-sport-projects1/sports-tech-intelligence/analytics) |
+| 看流量和热门页面 | [/admin/growth](https://sports-tech-intelligence.vercel.app/admin/growth) |
 | 看部署 | [Vercel Deployments](https://vercel.com/douzi-sport-projects1/sports-tech-intelligence/deployments) |
 | 看网站报错 | [Vercel Logs](https://vercel.com/douzi-sport-projects1/sports-tech-intelligence/logs) |
-| 看注册用户 | [Clerk Dashboard](https://dashboard.clerk.com) |
+| 看注册用户 | [/admin/users](https://sports-tech-intelligence.vercel.app/admin/users) |
 | 看数据库和备份 | [Supabase Dashboard](https://supabase.com/dashboard) |
 | 看代码和修改历史 | [GitHub Repository](https://github.com/loooolBean/sports-tech-intelligence) |
 | 看 AI 用量 | 当前 `AI_API_BASE_URL` 所属服务商的 Usage / Billing 页面 |
-| 看付款 | [Stripe Dashboard](https://dashboard.stripe.com)（线上尚未配置） |
+| 看付款 | [/admin/revenue](https://sports-tech-intelligence.vercel.app/admin/revenue)（需连接 Stripe） |
 
 ## 1. 这个项目是什么
 
@@ -134,69 +134,60 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | Preview | Git 分支或 Pull Request 产生的 Vercel 测试地址 | 发布前检查 |
 | Production | 上面的正式地址 | 真实用户 |
 
-## 3. 我平时最常用的入口
+## 3. 读者日常怎么用
 
-日常只需要记住这些：
+1. 打开首页或 Latest，读标题、摘要和 Why It Matters；想核对信息，点击原始来源。
+2. 在 Topics 选关心的领域；Search 可找文章、公司、产品和研究。
+3. 登录后在文章页点击 **Save for later**；收藏保存在 Dashboard 的 Saved for later。
+4. 在公司或产品页点击 Watch，之后到 Watchlist 和 Alerts 看关联资讯。
+5. Pro 功能在 Pricing 查看；只有 Stripe 正式配置并验证后才能真实收费。
 
-1. 网站首页：看今天有没有新内容。
-2. `/admin/ops`：看 RSS、AI、内容和外部服务状态。
-3. `/admin/articles`：修改或隐藏文章。
-4. Vercel：流量、部署、报错、Cron。
-5. Clerk：用户。
-6. Supabase：数据库和备份。
+## 4. 管理员的唯一日常入口
 
-进入 Admin 前，必须使用 Clerk 登录，并且登录邮箱在 `ADMIN_EMAILS` 中。页面菜单不是安全边界，Admin 服务端仍会再次验证权限。
+打开 [/admin](https://sports-tech-intelligence.vercel.app/admin)，使用管理员邮箱登录。新后台上线后旧 `/admin/ops` 自动跳转到这里。
 
-## 4. 一人公司后台地图
+| 一级菜单 | 每天可以做什么 |
+| --- | --- |
+| Overview | 四个经营数字、待处理事项、今天内容、7 天趋势、系统状态 |
+| Content | 搜索 / 分类 / 状态筛选，25 条分页，Edit / Feature / Hide |
+| Sources | 管理 RSS 来源，启用或停用 |
+| Growth | 访客、文章阅读、来源、搜索、Save / Watch 人数、热门文章 |
+| Users | Clerk 注册数、今日新增、最近账号、本地收藏 / 关注关系数 |
+| Revenue | Stripe Active / Trial / 异常订阅、失败账单、Webhook 同步 |
+| Automations | RSS / SEO 日程、任务记录、RSS / AI 失败 |
+| System | 数据库、服务连接、最近部署及错误排查入口 |
+| Settings | 首次配置指导和配置是否存在；不显示密钥 |
 
-```text
-Sports Tech Intelligence
-│
-├── /admin
-│   └── 内容、来源、Research、Evidence、Claims、Leads
-│
-├── /admin/ops
-│   └── Today、Content Health、Automations、外部后台入口
-│
-└── External Services
-    ├── Vercel：流量、部署、日志、Cron
-    ├── Clerk：注册、登录、用户
-    ├── Supabase：数据库、日志、备份
-    ├── GitHub：代码、版本、恢复
-    ├── AI Provider：摘要、分类、用量
-    └── Stripe：付款与订阅（代码已有，线上未配置）
-```
+Research / Evidence / Categories / Tags 在 Content 内；Claims / Leads 在 Users 内；Newsletter 在 Growth 内。没有增加一级菜单。
 
-`/admin/ops` 不是复杂 BI。它只使用 `OK`、`WARNING`、`ERROR`、`NOT CONFIGURED` 四种状态，刷新页面即可获得最新信息。
+## 5. 管理员每天 5 分钟
 
-## 5. 每天怎么运营
+1. 打开 **Overview → Needs attention**，按 Review / Fix / Check 处理。
+2. 看四张数字卡：今天多少访客、文章阅读、新用户、Active Pro。点击数字可进详情。
+3. 在 Content today 查看最新 5 篇，直接精选或隐藏；正文和分类问题点 Edit。
+4. Growth 看读者从哪里来、最常读哪篇、有没有人搜索 / 收藏 / Watch。
+5. 只有出现异常才去 System / Automations 排查；第三方后台用于首次配置和深入诊断。
 
-### 每天 5 分钟
+数字说明：
 
-1. 打开首页，看 Feed 是否有当天内容。
-2. 打开 `/admin/ops`，看 RSS、AI 和 open failures。
-3. 打开 `/admin/articles`，隐藏明显垃圾，修正错误标题或分类。
-4. 打开 Vercel Analytics，看 Visitors、Top Pages 和 Referrers 是否异常。
-5. 如果刚发布过代码，确认 Vercel 最新 Deployment 是 `Ready`。
+- `Not connected`：必要配置缺失，**不是 0**。
+- `Unavailable`：本次读取失败，**不是 0**。
+- `No data yet`：已能读取，但没有执行 / 事件记录。
+- `Configured · unverified`：仅表示变量存在，不证明服务健康。
+- `0`：查询成功后的真实零值（浏览器分析仍可能被广告拦截器阻止）。
+- 所有日统计以北京时间为准；趋势是包含今天的 7 个自然日。
+- Published today / Hidden today 从新版本记录实际操作时间，历史未知值不回填。Hidden today 只含目前仍隐藏且今天被隐藏的文章；Failed today 为失败记录数，不是去重文章数。
+- Content 表的 Published 是原文发布日期，Views 是最近 7 天 PostHog 阅读事件数。
+- Active Pro 是当前 Pro price 的 active 订阅数，不包含 trialing；测试环境明确标记，不当成真实付费人数，也不是到账收入。
+- RSS / SEO 每天执行一次；超过 26 小时未成功才提示过期。
 
-### 今天是否正常的简单标准
+## 6. 每周 20 分钟
 
-- 首页能打开。
-- `/admin/ops` 有最新文章时间。
-- RSS ingestion 没有 `ERROR`。
-- AI processing 有近期处理时间。
-- Open ingestion failures 没有突然增加。
-
-## 6. 每周怎么检查
-
-### 每周 20 分钟
-
-1. Vercel Analytics：本周访问量、热门文章、流量来源。
-2. Clerk：新增用户、活跃用户、登录失败。
-3. `/admin/articles`：检查内容质量和分类。
-4. Vercel：看 Runtime Errors、Cron 和性能。
-5. Supabase：看数据库状态并确认 Backup 是否存在。
-6. AI Provider：看一周 API Usage、Billing 和 Rate Limits。
+1. Growth 看热门文章、来源和行为趋势；PostHog 看 3 个漏斗、留存和经过遮罩的回放。
+2. Users 看注册与最近活跃记录。Clerk 账号数量不等于经过人工核验的真人数量。
+3. Revenue 看付款异常；Stripe 深查账单和投递失败。
+4. Content 检查内容质量，Automations 检查重复失败来源。
+5. Supabase 确认备份；Vercel 检查性能和运行错误；AI Provider 检查用量。
 
 ## 7. 每月怎么检查
 
@@ -212,7 +203,7 @@ Sports Tech Intelligence
 
 ## 8. 内容怎么管理
 
-进入 [/admin/articles](https://sports-tech-intelligence.vercel.app/admin/articles)：
+进入 [/admin/content](https://sports-tech-intelligence.vercel.app/admin/content)：
 
 - 查看文章、来源、分类、状态和重要度。
 - 修改标题、摘要、正文、分类、SEO 信息和 Why It Matters。
@@ -224,7 +215,7 @@ Sports Tech Intelligence
 推荐处理顺序：
 
 ```text
-/admin/ops
+/admin
 → /admin/failures
 → Draft / Rejected / Duplicate Articles
 → 公开首页抽查
@@ -233,56 +224,57 @@ Sports Tech Intelligence
 
 不要直接删除有问题的文章。优先使用 Hidden 或 Rejected，方便以后查原因和恢复。
 
-## 9. 去哪里看流量
+## 9. PostHog：主要产品分析
 
-项目使用 **Vercel Web Analytics** 作为唯一主要流量工具，不同时安装 GA、PostHog、Plausible 或 Umami。
+日常使用 **/admin/growth**。保留现有 Vercel Web Analytics 作为辅助，不新增 GA、Mixpanel 或自建分析存储。
 
-进入：Vercel → Project → Analytics，重点看：
+首次连接在 **/admin/settings** 完成。配置：
 
-| 指标 | 简单解释 | 当前来源 |
-| --- | --- | --- |
-| Visitors | 大概有多少不同访客来看网站 | Vercel Analytics |
-| Page Views | 所有页面一共被打开多少次 | Vercel Analytics |
-| Top Pages | 哪些页面、文章最受欢迎 | Vercel Analytics |
-| Referrers | 用户从搜索、社交或其他网站哪里来 | Vercel Analytics |
-| Countries / regions | 访问者大概来自哪些地区 | Vercel Analytics |
-| Devices | 用户主要使用手机还是电脑 | Vercel Analytics |
-| Article CTR | 文章点击事件；是否能在后台查看取决于 Vercel 当前套餐 | `article_clicked` |
-| Search usage | 搜索提交次数；不记录搜索词 | `search_submitted` |
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`：项目 token。
+- `NEXT_PUBLIC_POSTHOG_HOST`：US 为 `https://us.i.posthog.com`，EU 为 `https://eu.i.posthog.com`。
+- `POSTHOG_PROJECT_ID`：后台报表查询项目。
+- `POSTHOG_PERSONAL_API_KEY`：仅服务端，限制到指定项目并授予 `query:read`。绝不能使用 NEXT_PUBLIC 前缀。
 
-代码只追踪七个非敏感事件：
+本地与生产应使用不同项目。环境变量修改后需要重新构建部署。配置完成后打开公开文章，在 PostHog Activity 确認收到事件，再检查 Growth。
+
+固定 16 个产品事件：
 
 ```text
-article_clicked
-original_source_clicked
-search_submitted
-topic_clicked
-company_clicked
-product_clicked
-signup_clicked
+article_opened              original_source_clicked
+topic_opened                search_submitted
+search_result_clicked       company_opened
+product_opened              save_added
+watch_added                 signup_started
+signup_completed            pricing_viewed
+checkout_started            checkout_completed
+subscription_activated      subscription_cancelled
 ```
 
-不会把邮箱、用户 ID、搜索词、Claim 内容或 Lead 内容发给 Analytics。`/admin`、`/dashboard`、`/watchlist`、`/alerts`、`/vendor`、Billing 和登录页面被排除，不污染公开内容数据。
+浏览器自动 pageview 使用 PostHog 默认能力；登录用 Clerk ID identify，不使用邮箱。退出 reset。Save / Watch 在持久化成功后记录；注册和支付成功由经过签名验证的 webhook 记录，不根据按钮点击或 success URL 推测。
 
-部署本次代码后，如果 Analytics 页面提示尚未启用，需要在 Vercel Project → Analytics 手工点击 Enable。事件报表是否可见以当前 Vercel 套餐为准。
+只建立 3 个有序漏斗（PostHog → Product analytics → New insight → Funnel；14 天窗口；Asia/Shanghai 时区）：
+
+1. Content → Signup：`$pageview → article_opened → signup_started → signup_completed`。
+2. Content → Engagement：`article_opened → company_opened OR product_opened → save_added OR watch_added`。后两个步骤分别用包含两个事件的 Action 表达 OR。
+3. Pricing → Subscription：`pricing_viewed → checkout_started → checkout_completed → subscription_activated`。
+
+目前代码没有在远程账号自动创建漏斗；缺少凭据时不要认为已完成远程连接。首次设置完毕后在 PostHog 保存这 3 个 Insight 即可。
+
+隐私：
+
+- 不上传邮箱、搜索词、Claim / Lead 表单文本；事件 URL 去掉 query / hash。
+- 私有账号、后台、Billing 和认领页不记录 pageview 或 replay；注册页仅允许 signup_started / identify。
+- Replay 遮罩所有输入与文字，阻止 iframe、Clerk 组件、data-private；带查询参数页面也不录制。
+- Stripe Hosted Checkout 不在本站，不录制银行卡页面。
+- 尊重浏览器 Do Not Track。上线前按目标地区要求配置同意机制、保留期限并审核隐私政策。
+- 服务端事件为 best effort；分析服务故障不阻断收藏、注册或付款。Webhook 重试使用稳定事件 UUID 去重；极端故障时仍可能少记分析事件，不能把它当账本。
+- Stripe 通知可能乱序；付费漏斗用于行为分析，收入及权限以 Stripe / 本地订阅同步为准。
 
 ## 10. 去哪里看用户
 
-进入 [Clerk Dashboard](https://dashboard.clerk.com)：
+**/admin/users** 直接读取 Clerk 的注册数和最近 30 个账号；今日新增统计最多扫描最近 1000 个账号，超过上限显示 Unavailable 而不展示低估数字。development instance 显式标识。
 
-- **Overview**：看注册、登录、活跃和留存概况。
-- **Users**：查看具体注册用户和账号状态。
-- **Logs**：用户为什么登录失败、注册请求是否出错。
-
-产品目前真正需要关注：
-
-| 指标 | 解释 |
-| --- | --- |
-| New Users | 新注册人数 |
-| Active Users | 真正回来登录或使用的人 |
-| Retention | 注册以后过一段时间还会回来的人 |
-
-`/admin/ops` 不额外调用 Clerk API 计算总用户数，避免为了一个数字增加复杂度。用户数据以 Clerk 为准，本地 Supabase `users` 表只保存业务所需的同步资料。
+本地 profiles 仅作为同步资料显示，不冒充全部账号。当前 Save / Watch 为仍存在的关系数；最近 7 天发生这些行为的人数在 Growth 查看。认证故障再去 Clerk Logs，留存去 PostHog。
 
 ## 11. 去哪里看数据库
 
@@ -337,7 +329,7 @@ AI 每篇文章生成：
 如果 RSS 有新文章但没有摘要：
 
 ```text
-/admin/ops → AI processing
+/admin → AI processing
 → /admin/failures
 → Vercel Logs
 → 当前 AI Provider 的 Usage / Billing / Rate Limits
@@ -374,9 +366,9 @@ RSS Source
 
 判断 RSS 是否正常：
 
-1. `/admin/ops` → RSS ingestion 应为 `OK`。
+1. `/admin` → RSS 应为 `Healthy`。
 2. Last run 应接近当天计划时间。
-3. Items processed 不应长期为 0。
+3. Items processed 为 0 可能只是没有新文章；结合来源时间与失败记录判断。
 4. `/admin/failures` 不应连续出现同一来源错误。
 5. `/admin/sources` 的 Last fetched 时间应持续更新。
 
@@ -407,7 +399,7 @@ Vercel 自动部署
 ↓
 Deployment 显示 Ready
 ↓
-打开 Production 检查首页、文章、搜索和 /admin/ops
+打开 Production 检查首页、文章、搜索和 /admin
 ```
 
 推荐命令：
@@ -483,7 +475,7 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 4. 配置 `STRIPE_WEBHOOK_SECRET`。
 5. 启用 Customer Portal，并用测试卡走完整流程。
 
-付款后主要在 Stripe Dashboard 看 `Payments`、`Customers`、`Subscriptions` 和 `Revenue`。网站数据库的 `subscriptions` 保存权限状态，`stripe_events` 用于防止同一 Webhook 重复处理。
+付款后日常在 /admin/revenue 查看；深度排查在 Stripe Dashboard 看 `Payments`、`Customers`、`Subscriptions` 和 `Revenue`。网站数据库的 `subscriptions` 保存权限状态，`stripe_events` 用于防止同一 Webhook 重复处理。
 
 当前阶段只需要 Free / Pro，不要先设计复杂定价。还没有真实付费时，优先关注内容质量、访问、回访和注册，暂时不要过度关注 MRR、LTV、CAC。
 
@@ -498,7 +490,7 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 | Domain | 独立域名（当前尚未确认） | 域名注册商后台 |
 | Stripe | 以后收费的交易手续费 | Stripe → Balance / Reports |
 
-当前没有接入邮件服务、Sentry 或其他付费分析平台，不要为“看起来专业”而增加后台。
+当前不额外接入邮件服务或 Sentry。PostHog 的事件与 Replay 可能产生用量费用，请在 PostHog 设置用量上限。
 
 ## 20. 常用后台链接
 
@@ -510,9 +502,10 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 | [GitHub](https://github.com/loooolBean/sports-tech-intelligence) | ACTIVE | 代码、commit、版本恢复 |
 | 当前 OpenAI-compatible Provider | ACTIVE | AI Usage、Billing、Rate Limits |
 | [Stripe](https://dashboard.stripe.com) | NOT CONFIGURED IN PRODUCTION | 以后付款和订阅 |
-| Vercel Web Analytics | CODE ADDED; VERIFY AFTER DEPLOY | Visitors、Page Views、Top Pages、Referrers |
+| PostHog | CODE ADDED; CREDENTIALS REQUIRED | 主要产品分析、漏斗、回放 |
+| Vercel Web Analytics | RETAINED | 辅助流量观察 |
 
-未接入：Google Analytics、PostHog、Plausible、Umami、Sentry、Datadog、New Relic、Resend。当前阶段不需要重复安装。
+未接入：Google Analytics、Plausible、Umami、Sentry、Datadog、New Relic、Resend。当前阶段不需要重复安装。
 
 ## 21. Environment Variables
 
@@ -535,6 +528,9 @@ Secret 只配置在本地 `.env` 或 Vercel Environment Variables。README 只�
 | `STRIPE_SECRET_KEY` | Stripe 服务端请求 | 真实收费 |
 | `STRIPE_WEBHOOK_SECRET` | 验证 Stripe Webhook | 真实收费 |
 | `STRIPE_PRO_PRICE_ID` | Pro recurring Price ID | 真实收费 |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_POSTHOG_HOST` | 浏览器与服务端事件采集 | 产品分析 |
+| `POSTHOG_PROJECT_ID` / `POSTHOG_PERSONAL_API_KEY` | 服务端只读报表 | Admin Growth |
+| `VERCEL_READ_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` | 最新生产部署状态（团队项目需要 Team ID） | 可选 |
 
 ### 永远不要把以下内容贴进 README
 
@@ -599,6 +595,7 @@ npm run backfill:intelligence -- --limit=5
 - OpenAI SDK + OpenAI-compatible AI Provider
 - Stripe Node SDK
 - Vercel Hosting、Cron、Web Analytics
+- PostHog 浏览器 / 服务端 SDK
 
 这是单 package 项目，不是 monorepo：
 
@@ -614,19 +611,35 @@ tests/               Node tests
 scripts/             采集、回填和维护脚本
 ```
 
-重要后台路由：
+后台一级路由见第 4 节。旧 `/admin/articles/[id]` 编辑路由保留，`/admin/articles` 跳转 Content，`/admin/ops` 跳转 Overview。
 
-| 路径 | 用途 |
-| --- | --- |
-| `/admin` | Admin 概览 |
-| `/admin/ops` | 一人公司运营总控制台 |
-| `/admin/articles` | 文章审核和编辑 |
-| `/admin/sources` | RSS 来源 |
-| `/admin/failures` | RSS / AI 失败记录 |
-| `/admin/research` | Research 管理 |
-| `/admin/evidence` | Evidence 管理 |
-| `/admin/claims` | Company Claim 审核 |
-| `/admin/leads` | Demo Leads |
+### 本版本发布前检查
+
+发布前先确认目标环境、备份和迁移，再部署。生产版本以 Vercel 的最新 Ready 部署为准：
+
+```powershell
+npm ci
+npm run prisma:generate
+npx prisma migrate status
+# 确认 DATABASE_URL / DIRECT_URL 指向预期环境并完成备份后：
+npx prisma migrate deploy
+npm run typecheck
+npm test
+npm run build
+```
+
+新增迁移 `20261002000000_solo_founder_operations` 只增加文章时间字段和收藏表，不删除旧数据。未迁移就运行新版本会出现字段 / 表不存在；不要用 reset 修复。
+
+2026-10-03（北京时间）已在当前 Supabase 数据库应用本次迁移，核对原有 318 篇文章和 1 个本地用户仍在，新收藏表启用了 RLS。迁移前已导出、回读校验 40 张 public 应用表，备份保存在本机被 Git 忽略的 `outputs/backups/`，没有上传 GitHub 或 Vercel。这是应用表快照，不包含 Supabase Auth / Storage，也不替代平台备份。此记录不代表未来的新环境已迁移，仍需运行 migrate status 检查。
+
+真实连接验收（需要配置凭据和管理员账号）：
+
+- 匿名进入 /admin 被送去登录 / Dashboard，普通账号无法访问后台或调用管理写入。
+- 管理员 Overview 能读取数据；断开报表密钥时显示 Not connected；无效密钥时显示 Unavailable。
+- 文章 Feature / Hide 后公开 Feed 更新；收藏后 Dashboard 可见，再取消。
+- PostHog 收到 16 种事件的对应真实操作；登录前后关联，退出 reset；私有页没有 replay。
+- Stripe 测试付款、取消与重复 webhook：权限正确，成功事件不因刷新 success 页重复产生。
+- 在手机检查菜单与文章表横向滚动，再验证 Production。
 
 重要原则：
 

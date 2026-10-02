@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserProfile } from "@/src/lib/auth";
 import { canWatchMore } from "@/src/lib/entitlements";
 import { prisma } from "@/src/lib/prisma";
+import { captureProductEvent } from "@/src/lib/posthog-server";
 import { unwatchCompanyForUser, unwatchProductForUser, watchCompany, watchProduct } from "@/src/lib/watchlist";
 
 export async function toggleCompanyWatch(formData: FormData) {
@@ -18,7 +19,8 @@ export async function toggleCompanyWatch(formData: FormData) {
   else {
     const capacity = await canWatchMore(user.id);
     if (!capacity.allowed) redirect("/pricing?reason=watch-limit");
-    await watchCompany(user.id, companyId);
+    const result = await watchCompany(user.id, companyId);
+    if (result.count) await captureProductEvent(user.clerkUserId, "watch_added", { entity_type: "company", entity_id: companyId });
   }
   revalidateWatchPaths(returnPath);
 }
@@ -34,7 +36,8 @@ export async function toggleProductWatch(formData: FormData) {
   else {
     const capacity = await canWatchMore(user.id);
     if (!capacity.allowed) redirect("/pricing?reason=watch-limit");
-    await watchProduct(user.id, productId);
+    const result = await watchProduct(user.id, productId);
+    if (result.count) await captureProductEvent(user.clerkUserId, "watch_added", { entity_type: "product", entity_id: productId });
   }
   revalidateWatchPaths(returnPath);
 }

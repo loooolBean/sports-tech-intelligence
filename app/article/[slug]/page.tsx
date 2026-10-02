@@ -9,6 +9,8 @@ import { getIntelligenceCategory } from "@/src/lib/intelligence-feed";
 import { buildArticleJsonLd, buildArticleMetadata } from "@/src/lib/seo";
 import { StoryImage } from "@/src/components/intelligence/story-image";
 import { getEditorialImageUrl } from "@/src/utils/images";
+import { SaveButton } from "@/src/components/intelligence/save-button";
+import { prisma } from "@/src/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     getCurrentUserProfile(),
   ]);
   const fromWatchlist = user ? await isArticleFromUserWatchlist(user.id, article) : false;
+  const saved = user ? Boolean(await prisma.savedArticle.findUnique({ where: { userId_articleId: { userId: user.id, articleId: article.id } }, select: { id: true } })) : false;
   const officialSource = isOfficialIntelligenceSource(article);
   const topic = getIntelligenceCategory(article.category.slug);
   const takeaways = getStringArray(article.aiSummary?.keyTakeaways).slice(0, 3);
@@ -66,6 +69,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 <StoryImage src={imageUrl} priority sizes="(max-width: 1024px) 100vw, 960px" />
               </div>
             )}
+            <SaveButton articleId={article.id} saved={saved} />
           </div>
         </header>
 

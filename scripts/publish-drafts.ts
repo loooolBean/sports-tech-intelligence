@@ -37,7 +37,7 @@ async function main() {
     try {
       await prisma.article.update({
         where: { id: draft.id },
-        data: { status: "PUBLISHED" },
+        data: { status: "PUBLISHED", firstPublishedAt: draft.firstPublishedAt ?? new Date() },
       });
       await generateAlertsForArticle(draft.id);
       published++;

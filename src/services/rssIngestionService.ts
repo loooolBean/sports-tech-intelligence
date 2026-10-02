@@ -219,7 +219,7 @@ export class RssIngestionService {
       if (input.autoPublish && intelligence.importanceScore >= AUTO_PUBLISH_MINIMUM_SCORE) {
         await this.db.article.update({
           where: { id: article.id },
-          data: { status: "PUBLISHED" },
+          data: { status: "PUBLISHED", firstPublishedAt: new Date() },
         });
         published = true;
       }

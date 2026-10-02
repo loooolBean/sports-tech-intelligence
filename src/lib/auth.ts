@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
+import { cache } from "react";
 import { prisma } from "./prisma";
 
 export function getAdminEmails(): string[] {
@@ -9,7 +10,7 @@ export function getAdminEmails(): string[] {
     .filter(Boolean);
 }
 
-export async function getCurrentUserProfile() {
+export const getCurrentUserProfile = cache(async () => {
   if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_")) {
     return null;
   }
@@ -58,9 +59,9 @@ export async function getCurrentUserProfile() {
       ...(desiredRole ? { role: desiredRole } : {}),
     },
   });
-}
+});
 
-export async function requireAdminUser() {
+export const requireAdminUser = cache(async () => {
   const user = await getCurrentUserProfile();
 
   if (!user || user.role !== UserRole.ADMIN) {
@@ -68,4 +69,4 @@ export async function requireAdminUser() {
   }
 
   return user;
-}
+});

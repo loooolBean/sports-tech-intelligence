@@ -1,50 +1,14 @@
-﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { requireAdminUser } from "../../src/lib/auth";
-
-const navItems = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/ops", label: "Operations" },
-  { href: "/admin/articles", label: "Articles" },
-  { href: "/admin/research", label: "Research" },
-  { href: "/admin/evidence", label: "Evidence" },
-  { href: "/admin/claims", label: "Company Claims" },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/sources", label: "Sources" },
-  { href: "/admin/categories", label: "Categories" },
-  { href: "/admin/tags", label: "Tags" },
-  { href: "/admin/newsletter", label: "Newsletter" },
-  { href: "/admin/failures", label: "Failures" },
-];
+import { requireAdminUser } from "@/src/lib/auth";
+import { AdminSidebar } from "@/src/components/admin/sidebar";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
-
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await requireAdminUser();
-
-  if (!user) {
-    redirect("/dashboard");
-  }
-
-  return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[220px_1fr]">
-      <aside>
-        <p className="overline">Admin</p>
-        <nav className="mt-4 grid gap-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              className="rounded-md px-3 py-2 text-caption font-medium text-text-secondary transition-colors hover:bg-bg-elevated"
-              href={item.href}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <section>{children}</section>
-    </main>
-  );
+  if (!(await requireAdminUser())) redirect("/dashboard");
+  return <div data-private className="min-h-screen bg-bg">
+    <AdminSidebar />
+    <main className="min-w-0 p-4 sm:p-8 lg:ml-60 lg:p-10"><div className="mx-auto max-w-6xl">{children}</div></main>
+  </div>;
 }

@@ -9,6 +9,7 @@ import { getCurrentUserProfile } from "@/src/lib/auth";
 import { getDashboardData } from "@/src/lib/dashboard";
 import { getUserEntitlements } from "@/src/lib/entitlements";
 import { ProBadge } from "@/src/components/pro/pro-gate";
+import { SavedList } from "@/src/components/intelligence/saved-list";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Your Intelligence Dashboard", robots: { index: false, follow: false } };
@@ -30,6 +31,7 @@ export default async function DashboardPage() {
       {!watchCount && data.suggestedCompanies.length > 0 && <section className="mt-12"><h2 className="text-h2 text-text-primary">Suggested Companies to Watch</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{data.suggestedCompanies.map((company) => <article key={company.id} className="card-surface flex flex-col p-5"><Link href={`/companies/${company.slug}`} className="text-h3 text-text-primary hover:text-accent">{company.name}</Link><p className="mt-2 line-clamp-3 text-body text-text-secondary">{company.shortDescription}</p><div className="mt-auto pt-5"><WatchButton entityId={company.id} entityType="company" watching={false} returnPath="/dashboard" /></div></article>)}</div></section>}
       <section className="mt-12"><div className="flex items-center justify-between"><div><p className="overline">Your feed</p><h2 className="mt-2 text-h2 text-text-primary">Relevant Intelligence</h2></div><Link href="/search?type=articles" className="text-caption font-semibold text-accent">Browse all →</Link></div><div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{data.relevantArticles.map((article) => <Link key={article.id} href={`/article/${article.slug}`} className="card-surface p-5"><p className="text-caption text-text-tertiary">{article.source.name} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}</p><h3 className="mt-2 text-h3 text-text-primary">{article.title}</h3><p className="mt-2 line-clamp-3 text-body text-text-secondary">{article.excerpt ?? article.aiSummary?.summary}</p></Link>)}</div></section>
       {entitlements.plan === "PRO" && data.relevantResearch.length > 0 && <section className="mt-12"><div className="flex items-center justify-between"><h2 className="text-h2 text-text-primary">Research Updates</h2><Link href="/research" className="text-caption font-semibold text-accent">Browse research →</Link></div><div className="mt-5 grid gap-4 md:grid-cols-2">{data.relevantResearch.map((research) => <Link key={research.id} href={`/research/${research.slug}`} className="card-surface p-5"><p className="text-caption text-text-tertiary">{research.studyType.replaceAll("_", " ")} · {research.publicationYear ?? "Year unknown"}</p><h3 className="mt-2 text-h3 text-text-primary">{research.title}</h3></Link>)}</div></section>}
+      <SavedList userId={user.id} />
       {user.role === "ADMIN" && <div className="mt-10 border-t border-border pt-6"><Link href="/admin" className="text-caption font-semibold text-accent">Open Admin Console →</Link></div>}
     </section>
   </main>;

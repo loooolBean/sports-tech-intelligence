@@ -2,12 +2,15 @@
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminFailuresPage() {
-  const failures = await getAdminFailures();
+export default async function AdminFailuresPage({ searchParams }: { searchParams: Promise<{ stage?: string }> }) {
+  const { stage } = await searchParams;
+  const failures = await getAdminFailures(stage);
 
   return (
     <div>
       <h1 className="text-h1 text-text-primary">Failure Logs</h1>
+      {stage && <p className="mt-3 text-sm text-text-secondary">Open failures · {stage}</p>}
+      {!failures.length && <p className="mt-6 text-sm text-text-secondary">No matching failures.</p>}
       <div className="mt-6 overflow-hidden rounded-lg border border-border">
         {failures.map((failure) => (
           <div key={failure.id} className="border-b border-border p-5 last:border-b-0">

@@ -9,6 +9,8 @@ import { cn } from "../src/lib/utils";
 import type { ReactNode } from "react";
 import { AlertNavLink } from "../src/components/alerts/alert-nav-link";
 import { PublicAnalytics } from "../src/components/analytics/public-analytics";
+import { ProductAnalytics } from "@/src/components/analytics/product-analytics";
+import { ClerkIdentity } from "@/src/components/analytics/clerk-identity";
 
 const hasClerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
 
@@ -297,23 +299,17 @@ function Footer() {
 }
 
 export function ClientLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const content = <>{!admin && <Navigation />}{children}{!admin && <Footer />}<PublicAnalytics /><ProductAnalytics /></>;
   if (!hasClerkKey || !ClerkProvider) {
-    return (
-      <>
-        <Navigation />
-        {children}
-        <Footer />
-        <PublicAnalytics />
-      </>
-    );
+    return content;
   }
 
   return (
     <ClerkProvider>
-      <Navigation />
-      {children}
-      <Footer />
-      <PublicAnalytics />
+      <ClerkIdentity />
+      {content}
     </ClerkProvider>
   );
 }

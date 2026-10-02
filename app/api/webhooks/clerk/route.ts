@@ -4,6 +4,7 @@ import { Webhook } from "svix";
 import { UserRole } from "@prisma/client";
 import { prisma } from "../../../../src/lib/prisma";
 import { getAdminEmails } from "../../../../src/lib/auth";
+import { captureProductEvent } from "@/src/lib/posthog-server";
 
 export async function POST(request: Request) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
@@ -22,11 +23,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.text();
-  const event = new Webhook(webhookSecret).verify(payload, {
-    "svix-id": svixId,
-    "svix-timestamp": svixTimestamp,
-    "svix-signature": svixSignature,
-  }) as {
+  let event: {
     type: string;
     data: {
       id: string;
@@ -36,6 +33,15 @@ export async function POST(request: Request) {
       last_name?: string | null;
     };
   };
+  try {
+    event = new Webhook(webhookSecret).verify(payload, {
+      "svix-id": svixId,
+      "svix-timestamp": svixTimestamp,
+      "svix-signature": svixSignature,
+    }) as typeof event;
+  } catch {
+    return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
+  }
 
   if (event.type === "user.created" || event.type === "user.updated") {
     const email =
@@ -61,7 +67,12 @@ export async function POST(request: Request) {
           role,
         },
       });
+      if (event.type === "user.created") await captureProductEvent(event.data.id, "signup_completed", {}, event.data.id);
     }
+  }
+
+  if (event.type === "user.deleted") {
+    await prisma.user.deleteMany({ where: { clerkUserId: event.data.id } });
   }
 
   return NextResponse.json({ ok: true });

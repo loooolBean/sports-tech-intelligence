@@ -1,5 +1,5 @@
 import { ArticleStatus, SourceType, Prisma } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { prisma } from "./prisma";
 import { slugify } from "../utils/content";
 import { generateAlertsForArticle } from "./alerts";
@@ -99,6 +99,7 @@ export async function saveArticleEditorialFields(formData: FormData) {
   const isFeatured = formData.get("isFeatured") === "on";
   const isHiddenFromFeed = formData.get("isHiddenFromFeed") === "on";
   const intelligenceCategory = getIntelligenceCategory(categorySlug);
+  const previous = articleId ? await prisma.article.findUnique({ where: { id: articleId }, select: { isHiddenFromFeed: true, hiddenAt: true } }) : null;
 
   if (
     !articleId ||
@@ -133,6 +134,7 @@ export async function saveArticleEditorialFields(formData: FormData) {
       importanceScore,
       isFeatured,
       isHiddenFromFeed,
+      hiddenAt: isHiddenFromFeed ? (previous?.isHiddenFromFeed ? previous.hiddenAt : new Date()) : null,
       processedAt: whyItMatters ? new Date() : undefined,
       aiSummary: {
         upsert: {
@@ -165,6 +167,9 @@ export async function saveArticleEditorialFields(formData: FormData) {
     },
   });
 
+  updateTag("intelligence-feed");
+  revalidatePath("/admin");
+  revalidatePath("/admin/content");
   revalidatePath(`/article/${article.slug}`);
   revalidatePath("/");
   revalidatePath("/latest");
@@ -186,7 +191,14 @@ export async function updateArticleStatus(formData: FormData) {
     throw new Error("Invalid article status update.");
   }
 
-  const article = await prisma.article.update({
+  const article = await prisma.$transaction(async tx => {
+    if (status === ArticleStatus.PUBLISHED) {
+      await tx.article.updateMany({
+        where: { id: articleId, status: { not: ArticleStatus.PUBLISHED }, firstPublishedAt: null },
+        data: { firstPublishedAt: new Date() },
+      });
+    }
+    return tx.article.update({
     where: { id: articleId },
     data: { status },
     select: {
@@ -198,12 +210,17 @@ export async function updateArticleStatus(formData: FormData) {
         },
       },
     },
+    });
   });
 
   if (status === ArticleStatus.PUBLISHED) {
     await generateAlertsForArticle(article.id);
   }
 
+  updateTag("intelligence-feed");
+  revalidatePath("/admin");
+  revalidatePath("/admin/content");
+  revalidatePath("/admin/articles");
   revalidatePath("/");
   revalidatePath("/latest");
   revalidatePath("/topics");
@@ -264,8 +281,10 @@ export async function toggleSourceStatus(formData: FormData) {
   revalidatePath("/admin/sources");
 }
 
-export async function getAdminFailures() {
+export async function getAdminFailures(stage?: string) {
+  await assertAdminAction();
   return prisma.ingestionFailure.findMany({
+    where: stage ? { stage, status: "OPEN" } : undefined,
     include: {
       source: true,
     },
@@ -288,6 +307,8 @@ export async function resolveFailure(formData: FormData) {
   });
 
   revalidatePath("/admin/failures");
+  revalidatePath("/admin");
+  revalidatePath("/admin/automations");
 }
 
 export async function getAdminNewsletterSubscribers() {

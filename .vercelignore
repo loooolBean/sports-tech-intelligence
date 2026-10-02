@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.git/
+.next/
+node_modules/
+outputs/
+work/
+*.log

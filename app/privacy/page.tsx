@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com";
-  const lastUpdated = "September 20, 2026";
+  const lastUpdated = "October 2, 2026";
 
   return (
     <main className="min-h-screen bg-bg">
@@ -35,8 +35,10 @@ export default function PrivacyPage() {
             <h2>1. Information We Collect</h2>
             <p>
               When you subscribe to our newsletter or create an account, we collect your
-              email address. We also collect anonymous usage data such as page views,
-              referral sources, and device type to improve our content and services.
+              email address. We also collect usage data such as page views,
+              referral sources, device type, searches (without search text), saves and watches.
+              When you sign in, product analytics may link your earlier anonymous visits to
+              your Clerk account ID. Your email is not used as the analytics identifier.
             </p>
           </section>
 
@@ -55,9 +57,12 @@ export default function PrivacyPage() {
             <h2>3. Cookies and Tracking</h2>
             <p>
               We use cookies and similar technologies to understand how visitors interact
-              with our site. Third-party advertisers may also use cookies to serve ads
-              based on your prior visits to this and other websites. You can control
-              cookie preferences through your browser settings.
+              with our site. When enabled, PostHog records product events and masked session
+              replays on public pages. All text and inputs are masked; private account,
+              admin and payment pages, embedded frames, and pages with query parameters
+              are excluded from replay. We do not record Stripe Hosted Checkout.
+              Browser analytics respects Do Not Track. You can also manage storage through
+              your browser settings; account and payment records are separate from analytics.
             </p>
           </section>
 
@@ -72,6 +77,12 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Vercel Web Analytics</strong> — anonymous public-page traffic analysis
+              </li>
+              <li>
+                <strong>PostHog</strong> — product events, traffic, funnels, retention and masked session replay
+              </li>
+              <li>
+                <strong>Stripe</strong> — hosted payments and subscriptions; we do not store card details
               </li>
               <li>
                 <strong>Vercel</strong> — hosting and server infrastructure

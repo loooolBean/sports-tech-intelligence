@@ -4,9 +4,25 @@ import type { PrismaClient } from "@prisma/client";
 import type { ArticleSummarizationService } from "../src/services/articleSummarizationService";
 import { RssIngestionService } from "../src/services/rssIngestionService";
 import { RSS_SOURCE_ORDER } from "../src/lib/rss-policy";
+import { createArticleDom } from "../src/utils/article-dom";
 
 const input = { sourceId: "source-test", rssUrl: "https://example.com/feed", autoPublish: true };
 const item = { title: "Sports sensor update", link: "https://example.com/article", content: "Athlete training sensors record performance data. ".repeat(25) };
+
+test("article parsing ignores layout CSS while preserving content, metadata and hidden elements", () => {
+  const dom = createArticleDom(`<html><head><style>.card { width: calc(100% / var(--columns)) }</style><link rel="canonical" href="https://example.com/story"><meta property="og:image" content="https://example.com/image.jpg"></head><body><article style="width: calc(100% / var(--columns)); display: block"><h1>Sports sensors</h1><p>Source-backed article text.</p><a href="/source">Original source</a></article><aside style="width: calc(100% / var(--columns)); display: none !important; visibility: hidden">Hidden navigation</aside></body></html>`, "https://example.com/story");
+  const document = dom.window.document;
+  assert.equal(document.querySelector('style'), null);
+  assert.equal(document.querySelector('article')?.style.width, '');
+  assert.equal(document.querySelector('article')?.style.display, 'block');
+  assert.equal(document.querySelector('aside')?.style.display, 'none');
+  assert.equal(document.querySelector('aside')?.style.visibility, 'hidden');
+  assert.equal(document.querySelector('h1')?.textContent, 'Sports sensors');
+  assert.equal(document.querySelector('a')?.href, 'https://example.com/source');
+  assert.equal(document.querySelector('meta[property="og:image"]')?.getAttribute('content'), 'https://example.com/image.jpg');
+  assert.equal(document.querySelector('link[rel="canonical"]')?.getAttribute('href'), 'https://example.com/story');
+  dom.window.close();
+});
 
 function fixture(options: { aiFails?: boolean; duplicate?: boolean; feedFails?: boolean; alertFails?: boolean } = {}) {
   const failures: Array<{ stage: string; payload?: unknown }> = [];

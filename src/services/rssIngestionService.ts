@@ -1,4 +1,4 @@
-import { JSDOM } from "jsdom";
+import { createArticleDom } from "../utils/article-dom";
 import { getEditorialImageUrl } from "../utils/images";
 import { Readability } from "@mozilla/readability";
 import Parser from "rss-parser";
@@ -365,7 +365,7 @@ export class RssIngestionService {
     }
 
     const html = await response.text();
-    const dom = new JSDOM(html, { url });
+    const dom = createArticleDom(html, url);
     const article = new Readability(dom.window.document).parse();
 
     const content = article?.textContent?.trim();
@@ -429,13 +429,13 @@ export class RssIngestionService {
   }
 
   private extractImageFromHtml(html: string): string | undefined {
-    const dom = new JSDOM(html);
+    const dom = createArticleDom(html);
     const img = dom.window.document.querySelector("img");
     return img?.getAttribute("src") || undefined;
   }
 
   private htmlToText(html: string): string {
-    const dom = new JSDOM(html);
+    const dom = createArticleDom(html);
     return dom.window.document.body.textContent?.replace(/\s+/g, " ").trim() ?? "";
   }
 

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FeedStory, LeadStory, SecondaryStory } from "@/src/components/intelligence/feed-card";
 import { getHomepageFeed, getTopicsOverview, type FeedArticle } from "@/src/lib/feed";
+import { getAdSenseConfig } from "@/src/lib/monetization";
+import { AdSlot } from "@/src/components/monetization/ad-slot";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ export default async function HomePage() {
     getTopicsOverview(),
   ]);
   const stories = uniqueArticles([...top, ...latest]);
+  const ads = getAdSenseConfig();
   const lead = stories[0];
   const secondaryCount = stories.length >= 8 ? 4 : Math.min(2, Math.max(stories.length - 1, 0));
   const secondary = stories.slice(1, 1 + secondaryCount);
@@ -70,6 +73,8 @@ export default async function HomePage() {
             New coverage will appear here as sources are reviewed.
           </section>
         )}
+
+        {ads.homeSlot && <AdSlot client={ads.client} slot={ads.homeSlot} />}
 
         <section className="grid gap-7 border-b border-border py-9 sm:py-12 lg:grid-cols-[13rem_minmax(0,1fr)]">
           <header>

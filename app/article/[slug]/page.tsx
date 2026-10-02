@@ -11,6 +11,8 @@ import { StoryImage } from "@/src/components/intelligence/story-image";
 import { getEditorialImageUrl } from "@/src/utils/images";
 import { SaveButton } from "@/src/components/intelligence/save-button";
 import { prisma } from "@/src/lib/prisma";
+import { getAdSenseConfig } from "@/src/lib/monetization";
+import { AdSlot } from "@/src/components/monetization/ad-slot";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const takeaways = getStringArray(article.aiSummary?.keyTakeaways).slice(0, 3);
   const summary = toStandfirst(article.aiSummary?.summary ?? article.excerpt ?? "A short summary has not been added yet.");
   const imageUrl = getEditorialImageUrl(article.imageUrl);
+  const ads = getAdSenseConfig();
 
   return (
     <main className="min-h-screen bg-bg">
@@ -108,6 +111,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <span>Read the original report</span><span className="text-right">{article.source.name} ↗</span>
             </a>
           </p>
+
+          {ads.articleSlot && <AdSlot client={ads.client} slot={ads.articleSlot} />}
 
           {(article.companies.length > 0 || article.products.length > 0) && (
             <section className="mt-10 border-t border-border pt-8">

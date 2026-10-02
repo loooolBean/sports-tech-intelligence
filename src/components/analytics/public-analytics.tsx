@@ -22,6 +22,7 @@ const EVENT_NAMES = new Set([
   "topic_clicked",
   "company_clicked",
   "product_clicked",
+  "affiliate_clicked",
   "signup_clicked",
 ]);
 

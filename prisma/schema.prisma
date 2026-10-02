@@ -285,11 +285,27 @@ model Product {
   researches   ResearchProduct[]
   evidence     Evidence[]
   leads        Lead[]
+  affiliateOffers AffiliateOffer[]
 
   @@index([name])
   @@index([companyId])
   @@index([isFeatured])
   @@map("products")
+}
+
+model AffiliateOffer {
+  id          String   @id @default(uuid()) @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  partnerName String   @map("partner_name")
+  destinationUrl String @map("destination_url")
+  isActive    Boolean  @default(false) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, isActive])
+  @@map("affiliate_offers")
 }
 
 model Technology {

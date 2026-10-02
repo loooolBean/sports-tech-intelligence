@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Users, CreditCard, Rss, FileText, LayoutDashboard, Settings, Activity, Workflow, Menu, X, ArrowUpRight } from "lucide-react";
+import { BarChart3, Users, CreditCard, Rss, FileText, LayoutDashboard, Settings, Activity, Workflow, Menu, X, ArrowUpRight, BadgeDollarSign } from "lucide-react";
 
 const items = [
   ["/admin", "Overview", LayoutDashboard], ["/admin/content", "Content", FileText],
   ["/admin/sources", "Sources", Rss], ["/admin/growth", "Growth", BarChart3],
   ["/admin/users", "Users", Users], ["/admin/revenue", "Revenue", CreditCard],
+  ["/admin/monetization", "Monetization", BadgeDollarSign],
   ["/admin/automations", "Automations", Workflow], ["/admin/system", "System", Activity],
   ["/admin/settings", "Settings", Settings],
 ] as const;

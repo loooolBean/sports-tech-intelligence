@@ -83,6 +83,12 @@ export default function PrivacyPage() {
                 <strong>PostHog</strong> — product events, traffic, funnels, retention and masked session replay
               </li>
               <li>
+                <strong>Google AdSense (when enabled)</strong> — display ads on selected public pages; Google and its partners may use cookies or similar identifiers to serve and measure ads. See <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google advertising privacy information</a>.
+              </li>
+              <li>
+                <strong>Affiliate partners (when linked)</strong> — clicking a clearly labeled partner link may allow the partner to attribute a purchase to this site; we may earn a commission.
+              </li>
+              <li>
                 <strong>Paddle (and Stripe for legacy subscriptions)</strong> — hosted payments and subscriptions; we do not store card details
               </li>
               <li>

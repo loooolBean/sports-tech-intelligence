@@ -107,6 +107,27 @@ Sports Tech Intelligence 是一个体育科技每日情报网站。它自动从 
 | 看代码和修改历史 | [GitHub Repository](https://github.com/loooolBean/sports-tech-intelligence) |
 | 看 AI 用量 | 当前 `AI_API_BASE_URL` 所属服务商的 Usage / Billing 页面 |
 | 看付款 | [/admin/revenue](https://sports-tech-intelligence.vercel.app/admin/revenue)（需连接 Paddle） |
+| 管理广告和联盟推广 | [/admin/monetization](https://sports-tech-intelligence.vercel.app/admin/monetization) |
+
+## 流量变现：广告与联盟推广
+
+网站支持两条彼此独立的路线。流量本身不会自动产生收入：展示广告需要 AdSense 账号、网站审核、广告展示和有效点击／曝光；联盟推广需要加入商家的联盟计划、取得专属链接，并由商家确认有效成交。实际收入和结算以各平台后台为准，不用本站点击数估算。
+
+### Google AdSense 展示广告
+
+1. 在 [Google AdSense](https://www.google.com/adsense/start/) 注册／登录，添加网站 `sports-tech-intelligence.vercel.app`，按后台提示提交审核。建议以后使用自有域名，并确认 Google 当前是否接受你所用的域名与收款主体。
+2. 审核通过后，在 AdSense 创建首页和文章页的响应式广告单元，复制发布商 ID（`ca-pub-` 开头）和两个广告位 ID。不要把 Google Ads（投放广告花钱）与 AdSense（网站展示广告获得收入）混淆。
+3. 先在 Vercel Production 设置 `NEXT_PUBLIC_ADSENSE_CLIENT_ID` 并重新部署，以提供站点验证 meta 标签和 `/ads.txt`；这一步**不会展示广告**。审核通过后再填写 `NEXT_PUBLIC_ADSENSE_HOME_SLOT`、`NEXT_PUBLIC_ADSENSE_ARTICLE_SLOT`。完成隐私／同意机制核对后，将 `NEXT_PUBLIC_ADSENSE_ENABLED=true`，重新部署。
+4. 打开网站的 `/ads.txt`，确认出现 `google.com, pub-..., DIRECT, f08c47fec0942fa0`。发布商 ID 格式有效时，该文件才会发布。广告只出现在首页和文章页，后台、账户、结账、研究页不放广告。没有账号、没过审或未启用时，不显示空广告框。
+
+特别注意：面向欧洲经济区、英国等地区投放个性化广告时，Google 可能要求经认证的同意管理平台（CMP）。当前项目**没有完成广告同意管理**，在核实目标地区的要求并配置合规机制前，不要启用 AdSense。隐私政策需与实际启用的广告服务保持一致。
+
+### 联盟推广
+
+1. 加入与你的内容相关的品牌／商家联盟计划，获得批准后复制专属 HTTPS 跟踪链接。平台可从品牌官网的 `Affiliate` / `Partners` 入口寻找；不要把普通官网链接误写成联盟链接。
+2. 进入 [/admin/monetization](https://sports-tech-intelligence.vercel.app/admin/monetization)，选择对应产品，填写商家名与真实推广链接。先保持 `Active` 关闭，检查链接、推广协议和产品匹配，再开启。
+3. 链接只在对应产品详情页显示，旁边明确告知读者本站可能获得佣金，链接使用 `rel="sponsored nofollow"`。普通产品官网链接仍独立显示，研究／证据评价不能因佣金改变。
+4. 在联盟平台后台查看点击、有效订单、佣金和结算；本站目前只记录匿名的 `affiliate_clicked` 点击事件，不保存成交或佣金，也不会伪造收入。
 
 ## 1. 这个项目是什么
 

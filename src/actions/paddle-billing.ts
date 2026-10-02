@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUserProfile } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getPaddle, isPaddleConfigured, isPaddleProPrice } from "@/src/lib/paddle";
-import { absoluteUrl } from "@/src/lib/stripe";
 import { captureProductEvent } from "@/src/lib/posthog-server";
 
 export async function startPaddleCheckout() {
@@ -27,7 +26,7 @@ export async function startPaddleCheckout() {
       }
       const transaction = await paddle.transactions.create({ items: [{ priceId: price.id, quantity: 1 }],
         ...(existing?.paddleCustomerId ? { customerId: existing.paddleCustomerId } : {}),
-        customData: { userId: user.id }, checkout: { url: absoluteUrl("/checkout") } });
+        customData: { userId: user.id } });
       await tx.subscription.upsert({ where: { userId: user.id }, create: { userId: user.id, billingProvider: "paddle", paddleCheckoutId: transaction.id }, update: { paddleCheckoutId: transaction.id } });
       return { id: transaction.id, destination: "checkout" as const };
     }, { maxWait: 10000, timeout: 35000 });

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const previous = await tx.subscription.findFirst({ where: { paddleCustomerId: subscription.customerId } });
     if (!subscription.items.some(item => item.price.id === process.env.PADDLE_PRO_PRICE_ID) && previous?.paddleSubscriptionId !== subscription.id) return null;
     const synced = await syncPaddleSubscription(subscription, tx);
-    return { userId: synced.userId, subscriptionId: subscription.id, completed: transaction?.status === "completed",
+    return { userId: synced.userId, subscriptionId: subscription.id, completed: transaction?.status === "completed" && transaction.origin !== "subscription_recurring",
       // Paddle can send subscription.created before transaction.completed. Record
       // initial activation after checkout completion so the ordered funnel is valid.
       activated: synced.plan === "PRO" && transaction?.status === "completed" && transaction.origin !== "subscription_recurring",

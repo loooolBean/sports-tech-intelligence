@@ -48,6 +48,11 @@
     "tailwind-merge": "^3.6.0",
     "zod": "^3.25.0"
   },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    }
+  },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.15.0",

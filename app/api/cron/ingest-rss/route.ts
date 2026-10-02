@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../src/lib/prisma";
 import { RssIngestionService } from "../../../../src/services/rssIngestionService";
+import { RSS_SOURCE_ORDER } from "@/src/lib/rss-policy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -39,7 +40,7 @@ async function ingestRss(request: Request) {
         isActive: true,
         rssUrl: { not: null },
       },
-      orderBy: { lastFetchedAt: "asc" },
+      orderBy: RSS_SOURCE_ORDER,
       take: sourceLimit,
     });
 

@@ -14,10 +14,6 @@ import { ClerkIdentity } from "@/src/components/analytics/clerk-identity";
 
 const hasClerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
 
-const ClerkProvider = hasClerkKey
-  ? dynamic(() => import("@clerk/nextjs").then((mod) => mod.ClerkProvider), { ssr: false })
-  : null;
-
 const SignedIn = hasClerkKey
   ? dynamic(() => import("@clerk/nextjs").then((mod) => mod.SignedIn), { ssr: false })
   : null;
@@ -302,14 +298,10 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const admin = pathname === "/admin" || pathname.startsWith("/admin/");
   const content = <>{!admin && <Navigation />}{children}{!admin && <Footer />}<PublicAnalytics /><ProductAnalytics /></>;
-  if (!hasClerkKey || !ClerkProvider) {
-    return content;
-  }
-
   return (
-    <ClerkProvider>
-      <ClerkIdentity />
+    <>
+      {hasClerkKey && <ClerkIdentity />}
       {content}
-    </ClerkProvider>
+    </>
   );
 }

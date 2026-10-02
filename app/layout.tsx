@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { ClientLayout } from "./client-layout";
 
@@ -9,6 +10,8 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const content = <ClientLayout>{children}</ClientLayout>;
+  const clerkConfigured = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
   return (
     <html lang="en" className="light" suppressHydrationWarning>
       <head>
@@ -23,7 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="min-h-screen bg-bg font-sans text-body text-text-primary antialiased">
-        <ClientLayout>{children}</ClientLayout>
+        {clerkConfigured ? <ClerkProvider>{content}</ClerkProvider> : content}
       </body>
     </html>
   );

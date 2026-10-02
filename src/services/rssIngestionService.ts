@@ -72,9 +72,10 @@ export class RssIngestionService {
 
       for (const item of items) {
         try {
-          const created = await this.ingestItem(input, item);
-          if (created) result.created += 1;
+          const outcome = await this.ingestItem(input, item);
+          if (outcome.created) result.created += 1;
           else result.duplicates += 1;
+          if (outcome.failed) result.failed += 1;
         } catch (error) {
           result.failed += 1;
           await this.logFailure({
@@ -108,7 +109,7 @@ export class RssIngestionService {
     return result;
   }
 
-  private async ingestItem(input: IngestRssSourceInput, item: FeedItem): Promise<boolean> {
+  private async ingestItem(input: IngestRssSourceInput, item: FeedItem): Promise<{ created: boolean; failed: boolean }> {
     if (!item.link || !item.title) {
       throw new Error("RSS item is missing required title or link.");
     }
@@ -129,7 +130,7 @@ export class RssIngestionService {
           seenCount: { increment: 1 },
         },
       });
-      return false;
+      return { created: false, failed: false };
     }
 
     const extracted = await this.extractArticle(item.link, item);
@@ -137,7 +138,7 @@ export class RssIngestionService {
     // Content relevance filter — skip off-topic articles
     const combinedText = `${item.title} ${item.contentSnippet ?? ""} ${extracted.content ?? ""}`;
     if (!this.isRelevant(combinedText)) {
-      return false;
+      return { created: false, failed: false };
     }
 
     const contentHash = hashContent(`${item.title}\n${extracted.content}`);
@@ -155,7 +156,7 @@ export class RssIngestionService {
           seenCount: { increment: 1 },
         },
       });
-      return false;
+      return { created: false, failed: false };
     }
 
     const source = await this.db.source.findUniqueOrThrow({
@@ -204,10 +205,11 @@ export class RssIngestionService {
     });
 
     if (duplicateOf) {
-      return false;
+      return { created: false, failed: false };
     }
 
     let published = false;
+    let failed = false;
     try {
       const intelligence = await this.processArticleWithAi({
         articleId: article.id,
@@ -224,6 +226,7 @@ export class RssIngestionService {
         published = true;
       }
     } catch (error) {
+      failed = true;
       await this.logFailure({
         sourceId: input.sourceId,
         url: item.link,
@@ -237,6 +240,7 @@ export class RssIngestionService {
       try {
         await generateAlertsForArticle(article.id, this.db);
       } catch (error) {
+        failed = true;
         await this.logFailure({
           sourceId: input.sourceId,
           url: item.link,
@@ -247,7 +251,9 @@ export class RssIngestionService {
       }
     }
 
-    return true;
+    // Creating a draft is useful progress, but does not make failed AI or
+    // alert processing a successful job. Preserve both facts for operations.
+    return { created: true, failed };
   }
 
   async processArticleWithAi(input: {

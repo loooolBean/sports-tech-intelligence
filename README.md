@@ -495,6 +495,8 @@ Paddle 负责付款、订阅、收据、销售税处理和 Customer Portal。网
 - 日常处理：收到客服邮件后核对账户邮箱、收据/交易编号和付款时间，在支付服务商后台处理退款并确认订阅取消状态；不要索取完整卡号，不要仅修改本地 Pro 标记代替服务商退款或取消。通知处理完成后核对网站权限。
 - 收费前仍需通过 Paddle 主体、产品和域名审核，并验证支付与退款闭环；添加政策页面不等于审核通过或法律合规认证。
 
+页面发布后可运行 `npm run test:public -- https://sports-tech-intelligence.vercel.app` 检查政策页和定价页的 HTTP 状态、真实 HTML 标题、联系方式与政策链接。该检查排除仅出现在脚本中的内容，避免把空白首屏误判为成功；它不替代移动端、登录和支付的浏览器验收。
+
 付款后日常在 /admin/revenue 查看；深度排查在 Paddle Dashboard 看 Transactions、Subscriptions 和 Notifications。`subscriptions` 保存权限，`paddle_events` 对通知去重。接收到通知后读取 Paddle 当前订阅状态，同一客户的写入串行执行，避免延迟通知撤销新权限。浏览器访问 success URL 不会授予 Pro。
 
 2026-10-03：Paddle 数据库迁移已执行，执行前备份并校验 41 张应用表；完整 Sandbox 支付及正式收款仍待账号配置验收。

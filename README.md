@@ -258,7 +258,13 @@ subscription_activated      subscription_cancelled
 2. Content → Engagement：`article_opened → company_opened OR product_opened → save_added OR watch_added`。后两个步骤分别用包含两个事件的 Action 表达 OR。
 3. Pricing → Subscription：`pricing_viewed → checkout_started → checkout_completed → subscription_activated`。
 
-目前代码没有在远程账号自动创建漏斗；缺少凭据时不要认为已完成远程连接。首次设置完毕后在 PostHog 保存这 3 个 Insight 即可。
+2026-10-03 已在 PostHog 项目 642621 创建并读回验证三个漏斗，项目时区为 Asia/Shanghai，转化窗口为 14 天：
+
+- [Content → Signup](https://us.posthog.com/project/642621/insights/GPXy1rvk)
+- [Content → Engagement](https://us.posthog.com/project/642621/insights/P4Gft71r)
+- [Pricing → Subscription](https://us.posthog.com/project/642621/insights/dm2g7JR2)
+
+四项 PostHog 环境配置已同步至 Vercel Production；个人密钥仅用于服务端。API 查询已通过，采集接口已收到两条 `integration_verification` 测试事件。截至此次检查尚无真实浏览事件，真实用户转化与 Stripe 支付链路仍待验收。应用不会重复自动创建这些远程 Insight。
 
 隐私：
 
@@ -502,7 +508,7 @@ Stripe 负责：付款、订阅、退款、收据/发票、取消、付款失败
 | [GitHub](https://github.com/loooolBean/sports-tech-intelligence) | ACTIVE | 代码、commit、版本恢复 |
 | 当前 OpenAI-compatible Provider | ACTIVE | AI Usage、Billing、Rate Limits |
 | [Stripe](https://dashboard.stripe.com) | NOT CONFIGURED IN PRODUCTION | 以后付款和订阅 |
-| PostHog | CODE ADDED; CREDENTIALS REQUIRED | 主要产品分析、漏斗、回放 |
+| [PostHog](https://us.posthog.com/project/642621/home) | CONFIGURED; 3 FUNNELS CREATED; LIVE TRAFFIC VERIFICATION PENDING | 主要产品分析、漏斗、回放 |
 | Vercel Web Analytics | RETAINED | 辅助流量观察 |
 
 未接入：Google Analytics、Plausible、Umami、Sentry、Datadog、New Relic、Resend。当前阶段不需要重复安装。

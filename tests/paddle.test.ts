@@ -3,8 +3,27 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { Paddle, type Price, type Subscription } from "@paddle/paddle-node-sdk";
 import type { Prisma } from "@prisma/client";
-import { isPaddleProPrice } from "../src/lib/paddle";
+import { isPaddleConfigured, isPaddleProPrice } from "../src/lib/paddle";
 import { syncPaddleSubscription } from "../src/lib/paddle-subscriptions";
+
+test("checkout remains closed until provider setup is verified", () => {
+  const keys = ["PADDLE_CHECKOUT_ENABLED", "PADDLE_API_KEY", "PADDLE_PRO_PRICE_ID", "PADDLE_WEBHOOK_SECRET", "NEXT_PUBLIC_PADDLE_CLIENT_TOKEN", "NEXT_PUBLIC_PADDLE_ENVIRONMENT"] as const;
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  try {
+    Object.assign(process.env, { PADDLE_API_KEY: "test_key", PADDLE_PRO_PRICE_ID: "pri_test", PADDLE_WEBHOOK_SECRET: "secret", NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "test_client", NEXT_PUBLIC_PADDLE_ENVIRONMENT: "sandbox" });
+    delete process.env.PADDLE_CHECKOUT_ENABLED;
+    assert.equal(isPaddleConfigured(), false);
+    process.env.PADDLE_CHECKOUT_ENABLED = "true";
+    assert.equal(isPaddleConfigured(), true);
+    process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN = "live_client";
+    assert.equal(isPaddleConfigured(), false);
+  } finally {
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
 
 test("Paddle checkout enforces the published $15 USD monthly offer", () => {
   const price = { status: "active", billingCycle: { interval: "month", frequency: 1 }, unitPrice: { currencyCode: "USD", amount: "1500" }, trialPeriod: null } as Price;

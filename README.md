@@ -479,7 +479,7 @@ Paddle 负责付款、订阅、收据、销售税处理和 Customer Portal。网
 2. Developer tools → Authentication：创建服务端 API key 和 Client-side token。API key 需要读取 Products、Prices、Subscriptions，创建／读取 Transactions，创建 Customer Portal sessions；如委托自动创建商品和通知，则另外授予对应写权限。
 3. 填入本地 `.env.local`：`BILLING_PROVIDER=paddle`、`NEXT_PUBLIC_PADDLE_ENVIRONMENT=sandbox`、`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`。API key 不得加 NEXT_PUBLIC 前缀。
 4. Catalog 创建 Pro 商品及月付价格：USD 15.00，每月一次，不启用试用；将 `pri_...` 填入 `PADDLE_PRO_PRICE_ID`。
-5. Checkout 设置 Default payment link 为 `https://sports-tech-intelligence.vercel.app/checkout`；正式环境需要域名审核。
+5. Checkout 设置 Default payment link 为 `https://sports-tech-intelligence.vercel.app/checkout`；正式环境需要域名审核。未设置时 Paddle 会返回 `transaction_default_checkout_url_not_set`，网站升级入口保持关闭。确认能创建 Sandbox 测试交易后，设置 `PADDLE_CHECKOUT_ENABLED=true` 并重新部署，才开放按钮。
 6. Developer tools → Notifications：Destination 为 `https://sports-tech-intelligence.vercel.app/api/webhooks/paddle`，启用 `transaction.completed`、`subscription.created`、`subscription.activated`、`subscription.updated`、`subscription.canceled`、`subscription.paused`、`subscription.resumed`、`subscription.past_due`、`subscription.trialing`。将签名密钥填入 `PADDLE_WEBHOOK_SECRET`。
 7. 将配置同步到 Vercel 后重新部署。在明确显示 Test checkout 的页面完成 Sandbox 付款、取消、失败扣款、重复通知和乱序通知测试。
 
@@ -555,6 +555,7 @@ Secret 只配置在本地 `.env` 或 Vercel Environment Variables。README 只�
 | `PADDLE_WEBHOOK_SECRET` | 验证 Paddle 通知 | 支付 |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | 公开的客户端 checkout token | 支付 |
 | `NEXT_PUBLIC_PADDLE_ENVIRONMENT` | sandbox 或 production，缺省 sandbox | 支付 |
+| `PADDLE_CHECKOUT_ENABLED` | 默认 false；验证默认付款链接和测试交易可创建后设为 true | 支付 |
 | `STRIPE_SECRET_KEY` | 历史 Stripe 服务端请求 | 旧订阅兼容 |
 | `STRIPE_WEBHOOK_SECRET` | 验证历史 Stripe Webhook | 旧订阅兼容 |
 | `STRIPE_PRO_PRICE_ID` | Pro recurring Price ID | 真实收费 |

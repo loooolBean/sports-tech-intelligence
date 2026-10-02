@@ -284,8 +284,8 @@ function Footer() {
             <p className="text-sm font-semibold text-text-primary">Sports Tech Intelligence</p>
             <p className="mt-2 max-w-md text-caption text-text-tertiary">Independent coverage of sports technology, companies, products and research.</p>
           </div>
-          <nav className="flex flex-wrap gap-x-5 gap-y-2">
-            {[{ href: "/", label: "Today" }, { href: "/latest", label: "Latest" }, { href: "/topics", label: "Topics" }, { href: "/companies", label: "Companies" }, { href: "/products", label: "Products" }, { href: "/privacy", label: "Privacy" }].map((item) => (
+          <nav aria-label="Footer" className="flex max-w-lg flex-wrap gap-x-5 gap-y-2">
+            {[{ href: "/", label: "Today" }, { href: "/latest", label: "Latest" }, { href: "/topics", label: "Topics" }, { href: "/companies", label: "Companies" }, { href: "/products", label: "Products" }, { href: "/contact", label: "Contact" }, { href: "/terms", label: "Terms" }, { href: "/refunds", label: "Refunds" }, { href: "/privacy", label: "Privacy" }].map((item) => (
               <Link key={item.href} href={item.href} className="text-caption text-text-secondary transition-colors hover:text-text-primary">
                 {item.label}
               </Link>

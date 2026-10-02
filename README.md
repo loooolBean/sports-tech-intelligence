@@ -487,6 +487,14 @@ Paddle 负责付款、订阅、收据、销售税处理和 Customer Portal。网
 
 完成 Paddle 主体、域名和产品审核，确认网站有准确的经营主体信息、客服联系方式、服务条款和退款政策。替换全部 Sandbox 凭据与价格 ID，把 `NEXT_PUBLIC_PADDLE_ENVIRONMENT` 改为 `production`，再重新部署。正式账号开户、提交证件、同意服务协议和真实付款均由经营者本人完成。
 
+### 经营主体、客服和退款处理
+
+- 经营主体：东莞市中堂天姆德电商店；对外客服邮箱：beanliao00@163.com。统一信息位于 `src/lib/business.ts`，不要使用未经确认的英文主体名或虚构邮箱。
+- 公开页面：`/contact`（联系）、`/terms`（条款）、`/refunds`（退款）、`/privacy`（隐私）。本地运行 `npm run dev` 后，例如打开 http://localhost:3000/contact；线上使用同一路径。
+- 已确认规则：首次订阅付款后 7 天内可申请全额退款；续费默认不退。适用法律或 Paddle 政策提供更高保护时优先适用。取消续费不等于申请退款。
+- 日常处理：收到客服邮件后核对账户邮箱、收据/交易编号和付款时间，在支付服务商后台处理退款并确认订阅取消状态；不要索取完整卡号，不要仅修改本地 Pro 标记代替服务商退款或取消。通知处理完成后核对网站权限。
+- 收费前仍需通过 Paddle 主体、产品和域名审核，并验证支付与退款闭环；添加政策页面不等于审核通过或法律合规认证。
+
 付款后日常在 /admin/revenue 查看；深度排查在 Paddle Dashboard 看 Transactions、Subscriptions 和 Notifications。`subscriptions` 保存权限，`paddle_events` 对通知去重。接收到通知后读取 Paddle 当前订阅状态，同一客户的写入串行执行，避免延迟通知撤销新权限。浏览器访问 success URL 不会授予 Pro。
 
 2026-10-03：Paddle 数据库迁移已执行，执行前备份并校验 41 张应用表；完整 Sandbox 支付及正式收款仍待账号配置验收。

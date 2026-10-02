@@ -107,6 +107,12 @@ export default async function PricingPage({ searchParams }: Props) {
           </article>
         </div>
 
+        <p className="mt-6 text-caption text-text-secondary">
+          Pro renews monthly until canceled. Applicable taxes and the final total are shown at checkout.
+          {" "}Request a refund within 7 days of your first subscription payment; renewals are non-refundable by default, subject to applicable law and provider policies.
+          {" "}<Link href="/terms" className="underline">Terms</Link> · <Link href="/refunds" className="underline">Refunds & cancellation</Link> · <Link href="/contact" className="underline">Contact support</Link>
+        </p>
+
         <div className="mt-10 grid gap-5 border-t border-border pt-8 sm:grid-cols-3">
           {[
             ["Explore first", "Search, browse profiles and preview evidence before deciding to upgrade."],

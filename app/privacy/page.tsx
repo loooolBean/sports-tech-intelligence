@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BUSINESS } from "@/src/lib/business";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com";
-  const lastUpdated = "October 2, 2026";
+  const lastUpdated = BUSINESS.policyUpdated;
 
   return (
     <main className="min-h-screen bg-bg">
@@ -31,6 +31,7 @@ export default function PrivacyPage() {
         </p>
 
         <div className="prose-article mt-10 space-y-6">
+          <p>Sports Tech Intelligence is operated by <span lang="zh-CN">{BUSINESS.legalName}</span> in mainland China. Contact us using the address below about your personal data.</p>
           <section>
             <h2>1. Information We Collect</h2>
             <p>
@@ -140,8 +141,8 @@ export default function PrivacyPage() {
             <h2>10. Contact</h2>
             <p>
               For questions about this policy, contact us at{" "}
-              <a href="mailto:privacy@sportstechintelligence.com">
-                privacy@sportstechintelligence.com
+              <a href={`mailto:${BUSINESS.supportEmail}`}>
+                {BUSINESS.supportEmail}
               </a>
               .
             </p>
